@@ -43,7 +43,7 @@ export function HeroSection() {
                 <Star key={i} className="size-3 sm:size-3.5 fill-current text-amber-400" />
               ))}
             </span>
-            <span>Houston's Premier Equipment & Vehicle Rentals</span>
+            <span>The Right Place for Rent-to-Buy.</span>
           </span>
 
           {/* Main Headline */}
@@ -59,9 +59,8 @@ export function HeroSection() {
 
           {/* Description (Exact Brown project size: 13px -> 15px -> 17px, leading-relaxed) */}
           <p className="max-w-2xl mt-3 sm:mt-4 text-white text-[13px] sm:text-[15px] md:text-[17px] leading-relaxed md:leading-[36px] font-medium">
-            From work trucks and heavy hauling trailers to specialty machinery and
-            operator-supported equipment, M3 Rental makes equipment rental simple,
-            flexible, and accessible in Houston, Texas.
+            Houston’s alternative rental with no credit card or clear id requirement.
+            <br /> And RENT TO BUY option. We serve from small to large projects.
           </p>
 
           {/* CTA Buttons (Brown style: stacked on mobile, row on sm+) */}

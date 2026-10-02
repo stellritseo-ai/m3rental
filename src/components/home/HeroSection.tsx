@@ -124,7 +124,7 @@ export function HeroSection() {
 
           {/* Main Headline */}
           <h1
-            className="font-display text-[26px] sm:text-[32px] md:text-[37px] font-extrabold capitalize tracking-tight text-white mt-[10px] leading-[36px] sm:leading-[42px] md:leading-[46px] -mb-[15px]"
+            className="font-display text-[26px] sm:text-[30px] md:text-[34px] font-extrabold capitalize tracking-tight text-white mt-[10px] leading-[36px] sm:leading-[40px] md:leading-[44px] -mb-[15px]"
             style={{
               marginTop: "10px",
               marginBottom: "-15px",
@@ -132,7 +132,7 @@ export function HeroSection() {
             }}
           >
             Houston’s alternative rental with no credit card or clear id requirement.{" "}
-            <span className="bg-gradient-to-r from-[#4ADE80] via-[#FBBF24] to-[#60A5FA] bg-clip-text text-transparent">
+            <span className="text-[#3daf05]">
               And RENT TO BUY option. We serve from small to large projects.
             </span>
           </h1>

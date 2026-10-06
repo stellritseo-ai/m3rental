@@ -11,9 +11,9 @@ import {
   UserCheck,
 } from "lucide-react";
 import { site } from "@/lib/site";
-import banner1 from "@/assets/banner1.png";
-import banner2 from "@/assets/banner2.png";
-import banner3 from "@/assets/banner3.png";
+import banner1 from "@/assets/banner1.jpeg";
+import banner2 from "@/assets/banner2.jpeg";
+import banner3 from "@/assets/banner3.jpeg";
 
 const heroBanners = [
   {
@@ -131,9 +131,9 @@ export function HeroSection() {
               textShadow: "0 2px 10px rgba(0, 0, 0, 0.7)",
             }}
           >
-            Houston’s alternative rental with no credit card or clear id requirement.{" "}
+            No Credit Card Required{" "} <br />
             <span className="text-[#3daf05]">
-              And RENT TO BUY option. We serve from small to large projects.
+              Huston's RENT TO BUY Option For Tools & Midsize Equipment
             </span>
           </h1>
 
@@ -144,9 +144,10 @@ export function HeroSection() {
               textShadow: "0 1px 6px rgba(0, 0, 0, 0.7)",
             }}
           >
-            Offering flexible rental options for projects of every size, from small jobs to large-scale projects.{" "}
-            <strong className="font-bold text-white">No Credit Card or Clear ID Required.</strong> Plus, take advantage of our{" "}
-            <strong className="font-bold text-white">Rent-to-Buy option</strong> for added flexibility and long-term value.
+            The Right Place for Rent-to-Buy.
+            Flexible rentals for projects of every size, from small jobs to large-scale projects.
+            No credit card or clear ID required. Rent-to-buy options offer flexibility and long-term value.{" "}
+
           </p>
 
           {/* CTA Buttons (Brown style: stacked on mobile, row on sm+) */}
@@ -224,8 +225,8 @@ export function HeroSection() {
                     onClick={() => goToSlide(idx)}
                     aria-label={`Go to banner ${idx + 1}`}
                     className={`h-1.5 rounded-full transition-all duration-500 cursor-pointer ${isActive
-                        ? "w-7 bg-gradient-to-r from-[#4ADE80] to-[#60A5FA] shadow-[0_0_8px_rgba(74,222,128,0.7)]"
-                        : "w-2 bg-white/40 hover:bg-white/70"
+                      ? "w-7 bg-gradient-to-r from-[#4ADE80] to-[#60A5FA] shadow-[0_0_8px_rgba(74,222,128,0.7)]"
+                      : "w-2 bg-white/40 hover:bg-white/70"
                       }`}
                   />
                 );

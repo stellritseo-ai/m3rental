@@ -31,8 +31,9 @@ import { Reveal } from "@/components/site/Reveal";
 import { directionsUrl, site } from "@/lib/site";
 
 import heroSite from "@/assets/hero-site.jpg";
-import operatorImg from "@/assets/operator.jpg";
 import banner3 from "@/assets/banner3.jpeg";
+import banner4 from "@/assets/banner4.jpeg";
+import banner5 from "@/assets/banner5.jpeg";
 
 export const Route = createFileRoute("/about")({
   head: () => ({
@@ -305,7 +306,7 @@ function AboutPage() {
               <div className="overflow-hidden rounded-2xl border border-slate-200/90 shadow-xl bg-slate-950 p-2 relative group">
                 <div className="relative aspect-[4/3] rounded-xl overflow-hidden">
                   <img
-                    src={heroSite}
+                    src={banner4}
                     alt="M3 Rental Houston headquarters and machinery fleet"
                     loading="lazy"
                     className="size-full object-cover transition-transform duration-700 group-hover:scale-105"
@@ -520,7 +521,7 @@ function AboutPage() {
               <div className="overflow-hidden rounded-2xl border border-slate-200/90 shadow-xl bg-slate-950 p-2 relative group">
                 <div className="relative aspect-[4/3] rounded-xl overflow-hidden">
                   <img
-                    src={operatorImg}
+                    src={banner5}
                     alt="Professional machine operator testing excavator hydraulics"
                     loading="lazy"
                     className="size-full object-cover transition-transform duration-700 group-hover:scale-105"

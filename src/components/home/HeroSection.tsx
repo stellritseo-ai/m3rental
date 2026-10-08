@@ -142,15 +142,17 @@ export function HeroSection() {
 
           {/* Main Headline */}
           <h1
-            className="font-display text-[26px] sm:text-[30px] md:text-[34px] font-extrabold tracking-tight text-white mt-[10px] leading-[36px] sm:leading-[40px] md:leading-[44px] -mb-[15px]"
+            className="font-display font-extrabold tracking-tight text-white mt-[10px] leading-tight -mb-[15px]"
             style={{
               marginTop: "10px",
               marginBottom: "-15px",
               textShadow: "0 2px 10px rgba(0, 0, 0, 0.7)",
             }}
           >
-            <strong className="font-black uppercase">NO CREDIT CARD REQUIRED!</strong>{" "} <br />
-            <span className="text-[#FACC15]">
+            <strong className="font-black uppercase block text-[28px] sm:text-[38px] md:text-[45px] leading-[1.1] mb-2">
+              NO CREDIT CARD REQUIRED!
+            </strong>
+            <span className="text-[#FACC15] block text-[20px] sm:text-[24px] md:text-[28px] leading-snug">
               Huston's RENT TO BUY Option For Tools & Midsize Equipment
             </span>
           </h1>

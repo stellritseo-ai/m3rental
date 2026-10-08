@@ -121,8 +121,8 @@ export function Footer() {
   const quickLinks = [
     { label: "Home", href: "/" },
     { label: "About M3 Rental", href: "/about" },
-    { label: "How It Works", href: "/#how-it-works" },
-    { label: "Why Choose M3", href: "/#why-m3" },
+    { label: "How It Works", href: "/how-it-works" },
+    { label: "Why Choose M3", href: "/why-m3" },
     { label: "Contractor Reviews", href: "/#testimonials" },
     { label: "Rental FAQ", href: "/#faq" },
     { label: "Contact & Yard", href: "/contact" },
@@ -166,7 +166,7 @@ export function Footer() {
     },
     {
       label: "Zero Credit Card Trap (Cash/Zelle)",
-      href: "/#how-it-works",
+      href: "/how-it-works",
     },
     {
       label: "15-Minute Rapid Yard Turnaround",
@@ -195,8 +195,7 @@ export function Footer() {
 
   return (
     <footer
-      className="relative overflow-hidden rounded-[10px] bg-[#070D1D] text-white border border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.45)] max-w-[94rem] mx-auto transition-all"
-      style={{ margin: "15px" }}
+      className="relative overflow-hidden rounded-[10px] bg-[#070D1D] text-white border border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.45)] max-w-[94rem] mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] transition-all"
     >
       {/* ── Background Subtle Aesthetics & Glows ── */}
       <div className="absolute inset-0 bg-grid opacity-[0.025] pointer-events-none" />
@@ -675,6 +674,13 @@ export function Footer() {
                 Family &amp; Contractor Owned •{" "}
                 <span className="text-[#FFD54F] font-bold">Houston, TX</span>
               </p>
+              <span className="hidden sm:inline text-white/20">|</span>
+              <Link
+                to="/dashboard"
+                className="text-slate-400 hover:text-white transition-colors underline-offset-2 hover:underline flex items-center gap-1"
+              >
+                <ShieldCheck className="size-3 text-[#16A34A]" /> Dashboard
+              </Link>
             </div>
 
             {/* Trust badge & Back to top button */}

@@ -17,7 +17,9 @@ import {
   UserCheck,
   Wrench,
   X,
+  ShoppingCart,
 } from "lucide-react";
+import { useCart } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
 import { site } from "@/lib/site";
 import { cleanSearch } from "@/lib/search";
@@ -27,8 +29,8 @@ const nav = [
   { label: "Home", to: "/" },
   { label: "About", to: "/about" },
   { label: "Equipment", to: "/equipment", hasDropdown: true },
-  { label: "How It Works", to: "/#how-it-works" },
-  { label: "Why M3", to: "/#why-m3" },
+  { label: "How It Works", to: "/how-it-works" },
+  { label: "Why M3", to: "/why-m3" },
   // { label: "FAQ", to: "/faq" },
   { label: "Contact", to: "/contact" },
 ];
@@ -86,6 +88,7 @@ const equipmentCategories = [
 
 export function Header() {
   const navigate = useNavigate();
+  const { totalCount, openCart } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const [mobileEquipmentOpen, setMobileEquipmentOpen] = useState(false);
@@ -115,12 +118,11 @@ export function Header() {
   }, [open]);
 
   useEffect(() => {
-    if (searchOpen) {
-      const timer = setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-      return () => clearTimeout(timer);
-    }
+    if (!searchOpen) return;
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
   }, [searchOpen]);
 
   useEffect(() => {
@@ -148,13 +150,9 @@ export function Header() {
       className={cn(
         "sticky z-50 transition-all duration-300 bg-white",
         scrolled
-          ? "top-0 inset-x-0 w-full rounded-none border-b border-x-0 border-t-0 border-slate-200/90 shadow-md"
-          : "top-[15px] rounded-[10px] border border-slate-200/90 shadow-xs",
+          ? "top-0 inset-x-0 w-full m-0 rounded-none border-b border-x-0 border-t-0 border-slate-200/90 shadow-md"
+          : "top-2 sm:top-[15px] my-2 sm:my-[15px] mx-auto w-[calc(100%-16px)] sm:w-[calc(100%-30px)] rounded-[10px] border border-slate-200/90 shadow-xs",
       )}
-      style={{
-        margin: scrolled ? "0px" : "15px",
-        width: scrolled ? "100%" : "calc(100% - 30px)",
-      }}
     >
       {/* ── TOP UTILITY BAR (Brown-style high-trust header) ── */}
       <div
@@ -185,6 +183,14 @@ export function Header() {
               <span className="text-[#F59E0B]">★</span>
               <span>70+ Local Rental Options</span>
             </div>
+
+            <Link
+              to="/dashboard"
+              className="hidden lg:flex items-center gap-1 border-l border-white/15 pl-3 text-[11px] font-semibold text-slate-400 hover:text-white transition-colors"
+            >
+              <ShieldCheck className="size-3 text-[#4ADE80]" />
+              <span>Dashboard</span>
+            </Link>
           </div>
 
           {/* Right: Working Hours & Direct Phone */}
@@ -378,6 +384,22 @@ export function Header() {
                 <X className="size-4.5 text-[#0040DD] transition-transform duration-200" />
               ) : (
                 <Search className="size-4 sm:size-4.5 text-slate-600 group-hover:text-[#0040DD] transition-transform duration-200 group-hover:scale-110" />
+              )}
+            </button>
+
+            {/* Shopping Cart Button */}
+            <button
+              type="button"
+              onClick={openCart}
+              aria-label="View rental cart"
+              title="View rental cart"
+              className="relative grid size-9 sm:size-10 place-items-center rounded-xl sm:rounded-full border border-slate-200/90 bg-slate-50/80 hover:bg-white text-slate-700 hover:text-[#0040DD] hover:border-[#0040DD]/50 transition-all duration-200 cursor-pointer shadow-xs active:scale-95 group"
+            >
+              <ShoppingCart className="size-4 sm:size-4.5 text-slate-600 group-hover:text-[#0040DD] transition-transform duration-200 group-hover:scale-110" />
+              {totalCount > 0 && (
+                <span className="absolute -top-1 -right-1 size-5 rounded-full bg-[#0040DD] text-white text-[10px] font-black flex items-center justify-center border-2 border-white shadow-xs animate-in zoom-in-75">
+                  {totalCount > 9 ? "9+" : totalCount}
+                </span>
               )}
             </button>
 

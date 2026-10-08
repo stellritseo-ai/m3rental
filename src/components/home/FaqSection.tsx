@@ -63,8 +63,7 @@ export function FaqSection() {
   return (
     <section
       id="faq"
-      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-[60px] px-4 sm:px-6 lg:px-8 transition-all duration-300 scroll-mt-24"
-      style={{ margin: "15px", paddingTop: "60px", paddingBottom: "60px" }}
+      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-10 sm:py-[60px] px-4 sm:px-6 lg:px-8 mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] transition-all duration-300 scroll-mt-24"
     >
       {/* ── Background Decorations (Brown style) ── */}
       <div className="pointer-events-none absolute inset-0">

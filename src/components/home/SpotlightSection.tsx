@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/site/Reveal";
 import { getEquipment, operatorLabel } from "@/data/equipment";
+import { useManagedFleet } from "@/lib/dashboard-store";
 import { site } from "@/lib/site";
 
 interface SpotlightSectionProps {
@@ -23,8 +24,13 @@ interface SpotlightSectionProps {
 export function SpotlightSection({
   slug = "2025-toyota-tundra-trd-pro",
 }: SpotlightSectionProps) {
+  const { fleet } = useManagedFleet();
   const [selectedSlug, setSelectedSlug] = useState<string>(slug);
-  const spotlight = getEquipment(selectedSlug) ?? getEquipment(slug);
+  const spotlight =
+    fleet.find((i) => i.slug === selectedSlug) ??
+    getEquipment(selectedSlug) ??
+    fleet.find((i) => i.slug === slug) ??
+    getEquipment(slug);
 
   if (!spotlight) return null;
 
@@ -55,8 +61,7 @@ export function SpotlightSection({
 
   return (
     <section
-      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-12 sm:py-16 px-4 sm:px-6 lg:px-8 transition-all duration-300"
-      style={{ margin: "15px" }}
+      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-10 sm:py-16 px-4 sm:px-6 lg:px-8 mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] transition-all duration-300"
     >
       {/* Ambient background glow blooms */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">

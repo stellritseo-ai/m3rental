@@ -22,7 +22,8 @@ import {
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { EquipmentCard } from "@/components/site/EquipmentCard";
 import { Reveal } from "@/components/site/Reveal";
-import { categories, equipment, type CategoryId } from "@/data/equipment";
+import { categories, equipment as defaultEquipment, Equipment, type CategoryId } from "@/data/equipment";
+import { useManagedFleet } from "@/lib/dashboard-store";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { cleanSearch, readString } from "@/lib/search";
@@ -37,6 +38,16 @@ type Search = {
 };
 
 export const Route = createFileRoute("/equipment/")({
+  loader: async () => {
+    try {
+      const { getEquipmentDb } = await import("@/lib/api/equipment.functions");
+      const res = await getEquipmentDb();
+      if (res && res.equipment && res.equipment.length > 0) {
+        return { initialFleet: res.equipment as unknown as Equipment[] };
+      }
+    } catch {}
+    return { initialFleet: defaultEquipment };
+  },
   validateSearch: (search: Record<string, unknown>): Search =>
     cleanSearch({
       q: readString(search, "q"),
@@ -96,6 +107,15 @@ const sorts = [
 ];
 
 function CatalogPage() {
+  const loaderData = Route.useLoaderData();
+  const { fleet: liveFleet } = useManagedFleet();
+  const currentFleet =
+    liveFleet && liveFleet.length >= defaultEquipment.length
+      ? liveFleet
+      : (loaderData?.initialFleet && loaderData.initialFleet.length >= defaultEquipment.length
+          ? loaderData.initialFleet
+          : defaultEquipment);
+
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -120,17 +140,17 @@ function CatalogPage() {
 
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    equipment.forEach((item) => {
+    currentFleet.forEach((item) => {
       counts[item.category] = (counts[item.category] || 0) + 1;
     });
     return counts;
-  }, []);
+  }, [currentFleet]);
 
   const results = useMemo(() => {
     const query = search.q?.toLowerCase().trim();
     const band = priceBands.find((b) => b.id === search.price);
 
-    let list = equipment.filter((item) => {
+    let list = currentFleet.filter((item) => {
       if (
         query &&
         ![item.name, item.type, item.summary, item.color ?? ""]
@@ -166,7 +186,7 @@ function CatalogPage() {
     }
 
     return list;
-  }, [search]);
+  }, [search, currentFleet]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -202,8 +222,7 @@ function CatalogPage() {
     <SiteLayout>
       {/* ── 1. HERO COMMAND HEADER (Framed Card Container) ── */}
       <section
-        className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[14px] mx-auto mt-4 max-w-[94rem]"
-        style={{ margin: "15px auto", padding: "40px 24px" }}
+        className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[14px] mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] py-8 sm:py-10 px-4 sm:px-6"
       >
         {/* Ambient atmospheric blooms */}
         <div
@@ -321,7 +340,7 @@ function CatalogPage() {
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900",
                 )}
               >
-                All Fleet ({equipment.length})
+                All Fleet ({currentFleet.length})
               </button>
 
               {categories.map((c) => {
@@ -358,12 +377,11 @@ function CatalogPage() {
 
       {/* ── 2. MAIN CATALOG AREA (Sidebar + Results Grid) ── */}
       <section
-        className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[14px] mx-auto my-4 max-w-[94rem] p-4 sm:p-6 lg:p-8"
-        style={{ margin: "15px auto" }}
+        className="relative bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[14px] mx-auto my-3 sm:my-4 w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] p-3 sm:p-6 lg:p-8"
       >
         <div className="grid gap-8 lg:grid-cols-[17.5rem_1fr] items-start">
           {/* ── DESKTOP STICKY FILTER SIDEBAR ── */}
-          <aside className="hidden lg:block lg:sticky lg:top-24">
+          <aside className="hidden lg:block lg:sticky lg:top-24 self-start max-h-[calc(100vh-7rem)] overflow-y-auto pr-1">
             <div className="rounded-2xl border border-slate-200/90 bg-slate-50/60 p-5 shadow-xs">
               {/* Header */}
               <div className="flex items-center justify-between pb-4 border-b border-slate-200/70">
@@ -414,7 +432,7 @@ function CatalogPage() {
                         !search.category ? "bg-white/20 text-white" : "bg-white text-slate-500",
                       )}
                     >
-                      {equipment.length}
+                      {currentFleet.length}
                     </span>
                   </button>
 
@@ -448,61 +466,6 @@ function CatalogPage() {
                 </div>
               </div>
 
-              {/* Filter 2: Daily Price Range */}
-              <div className="mt-6 pt-5 border-t border-slate-200/70">
-                <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2.5">
-                  Daily Rental Rate
-                </p>
-                <div className="grid grid-cols-2 gap-1.5">
-                  {priceBands.map((b) => (
-                    <Chip
-                      key={b.id}
-                      active={search.price === b.id}
-                      onClick={() => setParam("price", b.id)}
-                    >
-                      {b.label}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-
-              {/* Filter 3: Operator / Driver */}
-              <div className="mt-6 pt-5 border-t border-slate-200/70">
-                <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2.5">
-                  Driver & Operator Option
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {operatorFilters.map((o) => (
-                    <Chip
-                      key={o.id}
-                      active={search.operator === o.id}
-                      onClick={() => setParam("operator", o.id)}
-                      fullWidth
-                    >
-                      {o.label}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-
-              {/* Filter 4: Rental Period */}
-              <div className="mt-6 pt-5 border-t border-slate-200/70">
-                <p className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2.5">
-                  Rental Term
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {periods.map((p) => (
-                    <Chip
-                      key={p.id}
-                      active={search.period === p.id}
-                      onClick={() => setParam("period", p.id)}
-                    >
-                      {p.label}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-
               {/* ── Houston Yard Help Card ── */}
               <div className="mt-6 pt-5 border-t border-slate-200/70">
                 <div className="rounded-xl bg-gradient-to-br from-blue-50 to-emerald-50/70 border border-blue-200/70 p-4 text-center">
@@ -533,7 +496,7 @@ function CatalogPage() {
               <div className="flex items-center gap-2 sm:gap-3">
                 <p className="text-sm font-bold text-slate-900">
                   Showing <span className="text-[#0040DD] font-black">{results.length}</span> of{" "}
-                  {equipment.length} commercial units
+                  {currentFleet.length} commercial units
                 </p>
                 <div className="h-4 w-px bg-slate-200" />
                 <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500">
@@ -581,39 +544,65 @@ function CatalogPage() {
                   )}
                 </div>
 
-                {/* Price band on mobile */}
+                {/* Categories on mobile */}
                 <div className="mt-3">
                   <span className="block text-[11px] font-black uppercase text-slate-500 mb-2">
-                    Daily Rate
+                    Equipment Category
                   </span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {priceBands.map((b) => (
-                      <Chip
-                        key={b.id}
-                        active={search.price === b.id}
-                        onClick={() => setParam("price", b.id)}
+                  <div className="flex flex-col gap-1.5 max-h-64 overflow-y-auto pr-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setParam("category", undefined);
+                        setMobileFiltersOpen(false);
+                      }}
+                      className={cn(
+                        "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left",
+                        !search.category
+                          ? "bg-[#0040DD] text-white shadow-xs font-black"
+                          : "text-slate-700 bg-slate-100 hover:bg-slate-200/60",
+                      )}
+                    >
+                      <span>All Fleet Categories</span>
+                      <span
+                        className={cn(
+                          "text-[10px] px-2 py-0.5 rounded-full font-black",
+                          !search.category ? "bg-white/20 text-white" : "bg-white text-slate-500",
+                        )}
                       >
-                        {b.label}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Operator on mobile */}
-                <div className="mt-3 pt-3 border-t border-slate-200/70">
-                  <span className="block text-[11px] font-black uppercase text-slate-500 mb-2">
-                    Operator Option
-                  </span>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {operatorFilters.map((o) => (
-                      <Chip
-                        key={o.id}
-                        active={search.operator === o.id}
-                        onClick={() => setParam("operator", o.id)}
-                      >
-                        {o.label}
-                      </Chip>
-                    ))}
+                        {currentFleet.length}
+                      </span>
+                    </button>
+                    {categories.map((c) => {
+                      const count = categoryCounts[c.id] || 0;
+                      const isActive = search.category === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setParam("category", c.id);
+                            setMobileFiltersOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all text-left",
+                            isActive
+                              ? "bg-[#0040DD] text-white shadow-xs font-black"
+                              : "text-slate-700 bg-slate-100 hover:bg-slate-200/60",
+                          )}
+                        >
+                          <span className="truncate">{c.label}</span>
+                          <span
+                            className={cn(
+                              "text-[10px] px-2 py-0.5 rounded-full font-black shrink-0",
+                              isActive ? "bg-white/20 text-white" : "bg-white text-slate-500",
+                            )}
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -741,7 +730,7 @@ function CatalogPage() {
                 </div>
               </div>
             ) : (
-              <div className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="mt-6 grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
                 {results.map((item, index) => (
                   <Reveal key={item.slug} delay={(index % 3) * 60} as="div">
                     <EquipmentCard item={item} className="h-full" />

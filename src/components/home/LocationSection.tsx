@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/site/Reveal";
 import { directionsUrl, mapEmbedUrl, site } from "@/lib/site";
+import { submitClientInquiry } from "@/lib/inbox-store";
 
 export function LocationSection() {
   const [form, setForm] = useState({
@@ -57,6 +58,20 @@ export function LocationSection() {
       `Notes: ${form.message || "None"}`,
     ].join("\n");
 
+    // Submit to Dispatch Inbox
+    submitClientInquiry({
+      senderName: form.name.trim(),
+      senderEmail: form.email.trim() || "inquiry@m3rental.com",
+      senderPhone: form.phone.trim(),
+      equipmentRequested: form.equipment.trim() || undefined,
+      rentalDuration: form.duration,
+      operatorRequired:
+        form.operator.toLowerCase().includes("operator") ||
+        form.operator.toLowerCase().includes("driver"),
+      notes: form.message.trim() || undefined,
+      source: "landing_page",
+    });
+
     const mailto = `${site.emailHref}?subject=${encodeURIComponent(
       `Rental Inquiry — ${form.equipment || "Houston Equipment"}`
     )}&body=${encodeURIComponent(body)}`;
@@ -75,8 +90,7 @@ export function LocationSection() {
   return (
     <section
       id="location-contact"
-      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-[60px] px-4 sm:px-6 lg:px-8 transition-all duration-300 scroll-mt-24"
-      style={{ margin: "15px", paddingTop: "60px", paddingBottom: "60px" }}
+      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-10 sm:py-[60px] px-4 sm:px-6 lg:px-8 mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] transition-all duration-300 scroll-mt-24"
     >
       {/* Ambient background glow blooms */}
       <div

@@ -55,12 +55,15 @@ export function HeroSection() {
   }, [currentSlide]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setTouchStart(e.targetTouches[0].clientX);
+    const touch = e.targetTouches[0];
+    if (touch) setTouchStart(touch.clientX);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStart === null) return;
-    const touchEnd = e.changedTouches[0].clientX;
+    const touch = e.changedTouches[0];
+    if (!touch) return;
+    const touchEnd = touch.clientX;
     const diff = touchStart - touchEnd;
     if (diff > 40) {
       nextSlide();
@@ -72,8 +75,7 @@ export function HeroSection() {
 
   return (
     <section
-      className="relative isolate min-h-[75vh] sm:min-h-[80vh] lg:min-h-[85vh] overflow-hidden flex items-center py-14 sm:py-18 md:py-20 lg:py-24 rounded-[10px] border border-slate-200/80 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.12)]"
-      style={{ margin: "0px 15px 15px 15px" }}
+      className="relative isolate min-h-[75vh] sm:min-h-[80vh] lg:min-h-[85vh] overflow-hidden flex items-center py-14 sm:py-18 md:py-20 lg:py-24 rounded-[10px] border border-slate-200/80 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.12)] mx-auto w-[calc(100%-16px)] sm:w-[calc(100%-30px)] mb-3 sm:mb-[15px]"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >

@@ -11,8 +11,21 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AboutRouteImport } from './routes/about'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FaqRouteImport } from './routes/faq'
+import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as WhyM3RouteImport } from './routes/why-m3'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as AdminBookingsRouteImport } from './routes/admin/bookings'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardBookingsRouteImport } from './routes/dashboard/bookings'
+import { Route as DashboardCustomersRouteImport } from './routes/dashboard/customers'
+import { Route as DashboardEquipmentRouteImport } from './routes/dashboard/equipment'
+import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
+import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
+import { Route as DashboardReviewsRouteImport } from './routes/dashboard/reviews'
 import { Route as EquipmentIndexRouteImport } from './routes/equipment/index'
 import { Route as EquipmentSlugRouteImport } from './routes/equipment/$slug'
 
@@ -26,15 +39,80 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FaqRoute = FaqRouteImport.update({
   id: '/faq',
   path: '/faq',
   getParentRoute: () => rootRouteImport,
+} as any)
+const HowItWorksRoute = HowItWorksRouteImport.update({
+  id: '/how-it-works',
+  path: '/how-it-works',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WhyM3Route = WhyM3RouteImport.update({
+  id: '/why-m3',
+  path: '/why-m3',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminBookingsRoute = AdminBookingsRouteImport.update({
+  id: '/admin/bookings',
+  path: '/admin/bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardBookingsRoute = DashboardBookingsRouteImport.update({
+  id: '/bookings',
+  path: '/bookings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardCustomersRoute = DashboardCustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardEquipmentRoute = DashboardEquipmentRouteImport.update({
+  id: '/equipment',
+  path: '/equipment',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardInboxRoute = DashboardInboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPaymentsRoute = DashboardPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardReviewsRoute = DashboardReviewsRouteImport.update({
+  id: '/reviews',
+  path: '/reviews',
+  getParentRoute: () => DashboardRoute,
 } as any)
 const EquipmentIndexRoute = EquipmentIndexRouteImport.update({
   id: '/equipment/',
@@ -50,50 +128,143 @@ const EquipmentSlugRoute = EquipmentSlugRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/why-m3': typeof WhyM3Route
+  '/admin/bookings': typeof AdminBookingsRoute
+  '/dashboard/bookings': typeof DashboardBookingsRoute
+  '/dashboard/customers': typeof DashboardCustomersRoute
+  '/dashboard/equipment': typeof DashboardEquipmentRoute
+  '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/reviews': typeof DashboardReviewsRoute
   '/equipment/$slug': typeof EquipmentSlugRoute
+  '/admin/': typeof AdminIndexRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/equipment/': typeof EquipmentIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/why-m3': typeof WhyM3Route
+  '/admin/bookings': typeof AdminBookingsRoute
+  '/dashboard/bookings': typeof DashboardBookingsRoute
+  '/dashboard/customers': typeof DashboardCustomersRoute
+  '/dashboard/equipment': typeof DashboardEquipmentRoute
+  '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/reviews': typeof DashboardReviewsRoute
   '/equipment/$slug': typeof EquipmentSlugRoute
+  '/admin': typeof AdminIndexRoute
+  '/dashboard': typeof DashboardIndexRoute
   '/equipment': typeof EquipmentIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/checkout': typeof CheckoutRoute
   '/contact': typeof ContactRoute
+  '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
+  '/how-it-works': typeof HowItWorksRoute
+  '/why-m3': typeof WhyM3Route
+  '/admin/bookings': typeof AdminBookingsRoute
+  '/dashboard/bookings': typeof DashboardBookingsRoute
+  '/dashboard/customers': typeof DashboardCustomersRoute
+  '/dashboard/equipment': typeof DashboardEquipmentRoute
+  '/dashboard/inbox': typeof DashboardInboxRoute
+  '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/reviews': typeof DashboardReviewsRoute
   '/equipment/$slug': typeof EquipmentSlugRoute
+  '/admin/': typeof AdminIndexRoute
+  '/dashboard/': typeof DashboardIndexRoute
   '/equipment/': typeof EquipmentIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/about' | '/contact' | '/faq' | '/equipment/$slug' | '/equipment/'
+    | '/'
+    | '/about'
+    | '/checkout'
+    | '/contact'
+    | '/dashboard'
+    | '/faq'
+    | '/how-it-works'
+    | '/why-m3'
+    | '/admin/bookings'
+    | '/dashboard/bookings'
+    | '/dashboard/customers'
+    | '/dashboard/equipment'
+    | '/dashboard/inbox'
+    | '/dashboard/payments'
+    | '/dashboard/reviews'
+    | '/equipment/$slug'
+    | '/admin/'
+    | '/dashboard/'
+    | '/equipment/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/contact' | '/faq' | '/equipment/$slug' | '/equipment'
+  to:
+    | '/'
+    | '/about'
+    | '/checkout'
+    | '/contact'
+    | '/faq'
+    | '/how-it-works'
+    | '/why-m3'
+    | '/admin/bookings'
+    | '/dashboard/bookings'
+    | '/dashboard/customers'
+    | '/dashboard/equipment'
+    | '/dashboard/inbox'
+    | '/dashboard/payments'
+    | '/dashboard/reviews'
+    | '/equipment/$slug'
+    | '/admin'
+    | '/dashboard'
+    | '/equipment'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/checkout'
     | '/contact'
+    | '/dashboard'
     | '/faq'
+    | '/how-it-works'
+    | '/why-m3'
+    | '/admin/bookings'
+    | '/dashboard/bookings'
+    | '/dashboard/customers'
+    | '/dashboard/equipment'
+    | '/dashboard/inbox'
+    | '/dashboard/payments'
+    | '/dashboard/reviews'
     | '/equipment/$slug'
+    | '/admin/'
+    | '/dashboard/'
     | '/equipment/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  CheckoutRoute: typeof CheckoutRoute
   ContactRoute: typeof ContactRoute
+  DashboardRoute: typeof DashboardRouteWithChildren
   FaqRoute: typeof FaqRoute
+  HowItWorksRoute: typeof HowItWorksRoute
+  WhyM3Route: typeof WhyM3Route
+  AdminBookingsRoute: typeof AdminBookingsRoute
   EquipmentSlugRoute: typeof EquipmentSlugRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   EquipmentIndexRoute: typeof EquipmentIndexRoute
 }
 
@@ -113,11 +284,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contact': {
       id: '/contact'
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/faq': {
@@ -126,6 +311,83 @@ declare module '@tanstack/react-router' {
       fullPath: '/faq'
       preLoaderRoute: typeof FaqRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/how-it-works': {
+      id: '/how-it-works'
+      path: '/how-it-works'
+      fullPath: '/how-it-works'
+      preLoaderRoute: typeof HowItWorksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/why-m3': {
+      id: '/why-m3'
+      path: '/why-m3'
+      fullPath: '/why-m3'
+      preLoaderRoute: typeof WhyM3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/bookings': {
+      id: '/admin/bookings'
+      path: '/admin/bookings'
+      fullPath: '/admin/bookings'
+      preLoaderRoute: typeof AdminBookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/bookings': {
+      id: '/dashboard/bookings'
+      path: '/bookings'
+      fullPath: '/dashboard/bookings'
+      preLoaderRoute: typeof DashboardBookingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/customers': {
+      id: '/dashboard/customers'
+      path: '/customers'
+      fullPath: '/dashboard/customers'
+      preLoaderRoute: typeof DashboardCustomersRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/equipment': {
+      id: '/dashboard/equipment'
+      path: '/equipment'
+      fullPath: '/dashboard/equipment'
+      preLoaderRoute: typeof DashboardEquipmentRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/inbox': {
+      id: '/dashboard/inbox'
+      path: '/inbox'
+      fullPath: '/dashboard/inbox'
+      preLoaderRoute: typeof DashboardInboxRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/payments': {
+      id: '/dashboard/payments'
+      path: '/payments'
+      fullPath: '/dashboard/payments'
+      preLoaderRoute: typeof DashboardPaymentsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/reviews': {
+      id: '/dashboard/reviews'
+      path: '/reviews'
+      fullPath: '/dashboard/reviews'
+      preLoaderRoute: typeof DashboardReviewsRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/equipment/': {
       id: '/equipment/'
@@ -144,12 +406,42 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DashboardRouteChildren {
+  DashboardBookingsRoute: typeof DashboardBookingsRoute
+  DashboardCustomersRoute: typeof DashboardCustomersRoute
+  DashboardEquipmentRoute: typeof DashboardEquipmentRoute
+  DashboardInboxRoute: typeof DashboardInboxRoute
+  DashboardPaymentsRoute: typeof DashboardPaymentsRoute
+  DashboardReviewsRoute: typeof DashboardReviewsRoute
+  DashboardIndexRoute: typeof DashboardIndexRoute
+}
+
+const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardBookingsRoute: DashboardBookingsRoute,
+  DashboardCustomersRoute: DashboardCustomersRoute,
+  DashboardEquipmentRoute: DashboardEquipmentRoute,
+  DashboardInboxRoute: DashboardInboxRoute,
+  DashboardPaymentsRoute: DashboardPaymentsRoute,
+  DashboardReviewsRoute: DashboardReviewsRoute,
+  DashboardIndexRoute: DashboardIndexRoute,
+}
+
+const DashboardRouteWithChildren = DashboardRoute._addFileChildren(
+  DashboardRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  CheckoutRoute: CheckoutRoute,
   ContactRoute: ContactRoute,
+  DashboardRoute: DashboardRouteWithChildren,
   FaqRoute: FaqRoute,
+  HowItWorksRoute: HowItWorksRoute,
+  WhyM3Route: WhyM3Route,
+  AdminBookingsRoute: AdminBookingsRoute,
   EquipmentSlugRoute: EquipmentSlugRoute,
+  AdminIndexRoute: AdminIndexRoute,
   EquipmentIndexRoute: EquipmentIndexRoute,
 }
 export const routeTree = rootRouteImport

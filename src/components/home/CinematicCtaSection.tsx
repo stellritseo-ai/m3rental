@@ -48,8 +48,7 @@ const trustBadges = [
 export function CinematicCtaSection() {
   return (
     <section
-      className="relative isolate overflow-hidden rounded-[10px] border border-slate-700/60 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] transition-all duration-300"
-      style={{ margin: "15px" }}
+      className="relative isolate overflow-hidden rounded-[10px] border border-slate-700/60 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] transition-all duration-300"
     >
       {/* Background Image with Cinematic Zoom Effect */}
       <img

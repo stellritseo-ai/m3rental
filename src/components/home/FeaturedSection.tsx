@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
@@ -12,10 +12,12 @@ import {
 import { Reveal } from "@/components/site/Reveal";
 import { EquipmentCard } from "@/components/site/EquipmentCard";
 import { featuredEquipment } from "@/data/equipment";
+import { useManagedFleet } from "@/lib/dashboard-store";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export function FeaturedSection() {
+  const { fleet } = useManagedFleet();
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const tabs = [
@@ -25,28 +27,36 @@ export function FeaturedSection() {
     { id: "machinery", label: "Heavy Machinery", icon: Wrench },
   ];
 
-  const filteredItems = featuredEquipment.filter((item) => {
-    if (activeTab === "all") return true;
-    if (activeTab === "trailers") return item.category === "trailers";
-    if (activeTab === "trucks")
-      return (
-        item.category === "pickup-trucks" ||
-        item.category === "trucks" ||
-        item.category === "buses"
-      );
-    if (activeTab === "machinery")
-      return (
-        item.category === "construction-equipment" ||
-        item.category === "utility-equipment" ||
-        item.category === "specialty-equipment"
-      );
-    return true;
-  });
+  const liveFeatured = useMemo(() => {
+    const list = fleet && fleet.length > 0 ? fleet : featuredEquipment;
+    const explicitlyFeatured = list.filter((item) => item.featured);
+    if (explicitlyFeatured.length > 0) return explicitlyFeatured;
+    return list.slice(0, 8);
+  }, [fleet]);
+
+  const filteredItems = useMemo(() => {
+    return liveFeatured.filter((item) => {
+      if (activeTab === "all") return true;
+      if (activeTab === "trailers") return item.category === "trailers";
+      if (activeTab === "trucks")
+        return (
+          item.category === "pickup-trucks" ||
+          item.category === "trucks" ||
+          item.category === "buses"
+        );
+      if (activeTab === "machinery")
+        return (
+          item.category === "construction-equipment" ||
+          item.category === "utility-equipment" ||
+          item.category === "specialty-equipment"
+        );
+      return true;
+    });
+  }, [liveFeatured, activeTab]);
 
   return (
     <section
-      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-12 sm:py-16 px-4 sm:px-6 lg:px-8 transition-all duration-300"
-      style={{ margin: "15px" }}
+      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-10 sm:py-16 px-4 sm:px-6 lg:px-8 mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] transition-all duration-300"
     >
       {/* Ambient background glow blooms */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -84,7 +94,7 @@ export function FeaturedSection() {
             to="/equipment"
             className="btn-base btn-primary text-xs sm:text-sm font-extrabold uppercase tracking-wider shadow-md hover:shadow-lg self-start md:self-end shrink-0"
           >
-            <span>View All 70+ Units</span>
+            <span>View All {fleet.length > 0 ? `${fleet.length} Units` : "Fleet"}</span>
             <ArrowRight className="size-4" />
           </Link>
         </Reveal>
@@ -96,17 +106,17 @@ export function FeaturedSection() {
             const isActive = activeTab === tab.id;
             const count =
               tab.id === "all"
-                ? featuredEquipment.length
+                ? liveFeatured.length
                 : tab.id === "trailers"
-                  ? featuredEquipment.filter((i) => i.category === "trailers").length
+                  ? liveFeatured.filter((i) => i.category === "trailers").length
                   : tab.id === "trucks"
-                    ? featuredEquipment.filter(
+                    ? liveFeatured.filter(
                       (i) =>
                         i.category === "pickup-trucks" ||
                         i.category === "trucks" ||
                         i.category === "buses",
                     ).length
-                    : featuredEquipment.filter(
+                    : liveFeatured.filter(
                       (i) =>
                         i.category === "construction-equipment" ||
                         i.category === "utility-equipment" ||

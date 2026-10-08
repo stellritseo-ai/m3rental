@@ -12,10 +12,14 @@ import {
   Zap,
 } from "lucide-react";
 import { Reveal } from "@/components/site/Reveal";
-import { categories, equipment } from "@/data/equipment";
+import { categories, equipment as defaultEquipment } from "@/data/equipment";
+import { useManagedFleet } from "@/lib/dashboard-store";
 import { cn } from "@/lib/utils";
 
 export function CategoriesSection() {
+  const { fleet } = useManagedFleet();
+  const currentFleet = fleet && fleet.length > 0 ? fleet : defaultEquipment;
+
   const categoryConfig: Record<
     string,
     {
@@ -113,8 +117,7 @@ export function CategoriesSection() {
 
   return (
     <section
-      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-12 sm:py-16 px-4 sm:px-6 lg:px-8 transition-all duration-300"
-      style={{ margin: "15px" }}
+      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-10 sm:py-16 px-4 sm:px-6 lg:px-8 mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] max-w-[94rem] transition-all duration-300"
     >
       {/* Ambient background glow blooms */}
       <div
@@ -155,7 +158,7 @@ export function CategoriesSection() {
             to="/equipment"
             className="btn-base btn-primary text-xs sm:text-sm font-extrabold uppercase tracking-wider shadow-md hover:shadow-lg self-start md:self-end shrink-0"
           >
-            <span>Browse All 70+ Units</span>
+            <span>Browse All {currentFleet.length > 0 ? `${currentFleet.length} Units` : "Fleet"}</span>
             <ArrowRight className="size-4" />
           </Link>
         </Reveal>
@@ -173,7 +176,7 @@ export function CategoriesSection() {
               startingPrice: "Call for rates",
             };
             const Icon = cfg.icon;
-            const count = equipment.filter(
+            const count = currentFleet.filter(
               (e) => e.category === category.id,
             ).length;
 

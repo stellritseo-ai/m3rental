@@ -4,7 +4,7 @@ import { site } from "@/lib/site";
 
 export function MobileCallBar() {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 p-3 backdrop-blur-xl shadow-[0_-8px_25px_rgba(0,0,0,0.08)] lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/90 bg-white/95 px-3 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl shadow-[0_-8px_25px_rgba(0,0,0,0.08)] lg:hidden">
       <div className="flex gap-2.5">
         <a
           href={site.phoneHref}

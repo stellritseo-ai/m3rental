@@ -98,8 +98,7 @@ export function WhyM3Section() {
   return (
     <section
       id="why-m3"
-      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] py-[60px] px-4 sm:px-6 lg:px-8 transition-all duration-300 scroll-mt-24"
-      style={{ margin: "15px", paddingTop: "60px", paddingBottom: "60px" }}
+      className="relative overflow-hidden bg-white border border-slate-200/90 shadow-[0_4px_25px_-5px_rgba(15,23,42,0.06)] rounded-[10px] mx-auto my-3 sm:my-[15px] w-[calc(100%-16px)] sm:w-[calc(100%-30px)] py-10 sm:py-[60px] px-4 sm:px-6 lg:px-8 transition-all duration-300 scroll-mt-24"
     >
       {/* Ambient background glow blooms like Brown project */}
       <div

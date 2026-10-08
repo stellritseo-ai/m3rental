@@ -94,7 +94,7 @@ function FaqPage() {
               <AccordionItem
                 key={item.q}
                 value={`item-${index}`}
-                className="bg-slate-50/70 border border-slate-200/90 rounded-2xl px-6 py-1 shadow-xs transition-colors hover:border-[#0040DD]/30"
+                className="bg-slate-50/70 border border-slate-200/90 rounded-2xl px-4 sm:px-6 py-1 shadow-xs transition-colors hover:border-[#0040DD]/30"
               >
                 <AccordionTrigger className="text-left font-display text-base sm:text-lg font-bold text-slate-900 hover:text-[#0040DD] transition-colors py-4">
                   {item.q}
@@ -107,7 +107,7 @@ function FaqPage() {
           </Accordion>
 
           {/* Light Theme "Still have questions" Card */}
-          <div className="mt-14 rounded-3xl border border-slate-200/90 bg-gradient-to-br from-blue-50/70 via-white to-emerald-50/70 p-8 text-center sm:p-12 shadow-lg">
+          <div className="mt-14 rounded-3xl border border-slate-200/90 bg-gradient-to-br from-blue-50/70 via-white to-emerald-50/70 p-5 sm:p-10 lg:p-12 text-center shadow-lg">
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-[#0040DD] shadow-xs mb-3">
               <HelpCircle className="size-3.5 text-[#0040DD]" />
               <span>We're Here to Help</span>

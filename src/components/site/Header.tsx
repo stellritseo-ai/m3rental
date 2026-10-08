@@ -404,7 +404,7 @@ export function Header() {
             </button>
 
             {/* Call Direct Signature Button (Brown style) */}
-            <a
+            {/* <a
               href={site.phoneHref}
               className="hidden xl:flex items-center gap-2.5 bg-gradient-to-r from-[#0040DD] to-[#16A34A] hover:from-[#16A34A] hover:to-[#0040DD] text-white px-3.5 py-1.5 rounded-full border border-white/25 shadow-[0_6px_20px_-4px_rgba(0,64,221,0.35)] hover:shadow-[0_10px_25px_-4px_rgba(22,163,74,0.55)] transition-all duration-300 shrink-0 active:scale-95 group/call"
             >
@@ -419,7 +419,7 @@ export function Header() {
                   {site.phone}
                 </span>
               </div>
-            </a>
+            </a> */}
 
             {/* Rent Equipment Primary CTA */}
             <Link

@@ -14,6 +14,10 @@ import { site } from "@/lib/site";
 import banner1 from "@/assets/banner1.jpeg";
 import banner2 from "@/assets/banner2.jpeg";
 import banner3 from "@/assets/banner3.jpeg";
+import banner4 from "@/assets/banner4.jpeg";
+import banner5 from "@/assets/banner5.jpeg";
+import banner6 from "@/assets/banner6.jpeg";
+
 
 const heroBanners = [
   {
@@ -27,6 +31,18 @@ const heroBanners = [
   {
     src: banner3,
     alt: "M3 Rental telehandler forklift with operator in Houston",
+  },
+  {
+    src: banner4,
+    alt: "M3 Rental commercial trucks and equipment fleet in Houston",
+  },
+  {
+    src: banner5,
+    alt: "M3 Rental heavy machinery and construction equipment",
+  },
+  {
+    src: banner6,
+    alt: "M3 Rental site equipment and tools available for rent in Houston",
   },
 ];
 
@@ -126,15 +142,15 @@ export function HeroSection() {
 
           {/* Main Headline */}
           <h1
-            className="font-display text-[26px] sm:text-[30px] md:text-[34px] font-extrabold capitalize tracking-tight text-white mt-[10px] leading-[36px] sm:leading-[40px] md:leading-[44px] -mb-[15px]"
+            className="font-display text-[26px] sm:text-[30px] md:text-[34px] font-extrabold tracking-tight text-white mt-[10px] leading-[36px] sm:leading-[40px] md:leading-[44px] -mb-[15px]"
             style={{
               marginTop: "10px",
               marginBottom: "-15px",
               textShadow: "0 2px 10px rgba(0, 0, 0, 0.7)",
             }}
           >
-            No Credit Card Required{" "} <br />
-            <span className="text-[#3daf05]">
+            <strong className="font-black uppercase">NO CREDIT CARD REQUIRED!</strong>{" "} <br />
+            <span className="text-[#FACC15]">
               Huston's RENT TO BUY Option For Tools & Midsize Equipment
             </span>
           </h1>

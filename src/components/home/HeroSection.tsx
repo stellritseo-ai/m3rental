@@ -125,35 +125,35 @@ export function HeroSection() {
         aria-hidden="true"
       />
 
-      <div className="w-full max-w-[94rem] mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <div className="w-full max-w-[94rem] mx-auto px-4 sm:px-6 lg:px-8 relative -mt-[250px] sm:mt-0">
         <div className="max-w-3xl xl:max-w-4xl">
           {/* Eyebrow Badge with 5 Stars like Brown project */}
-          <span
-            className="inline-flex flex-wrap sm:flex-nowrap items-center gap-1.5 max-w-full rounded-2xl sm:rounded-full border border-white/20 bg-black/40 px-3 py-1.5 text-[10.5px] sm:text-xs font-semibold text-white backdrop-blur-md shadow-xs mt-[60px]"
-            style={{ marginTop: "60px" }}
-          >
-            <span className="flex text-amber-400 gap-0.5 shrink-0">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="size-3 sm:size-3.5 fill-current text-amber-400" />
-              ))}
+          <div className="flex justify-center sm:block">
+            <span
+              className="inline-flex flex-wrap sm:flex-nowrap items-center justify-center sm:justify-start gap-1.5 max-w-full rounded-2xl sm:rounded-full border border-white/20 bg-black/40 px-3 py-1.5 text-[10.5px] sm:text-xs font-semibold text-white backdrop-blur-md shadow-xs mt-[211px] sm:mt-[60px]"
+            >
+              <span className="flex text-amber-400 gap-0.5 shrink-0">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="size-3 sm:size-3.5 fill-current text-amber-400" />
+                ))}
+              </span>
+              <span>The Right Place for Rent-to-Buy.</span>
             </span>
-            <span>The Right Place for Rent-to-Buy.</span>
-          </span>
+          </div>
 
           {/* Main Headline */}
           <h1
-            className="font-display font-extrabold tracking-tight text-white mt-[10px] leading-tight -mb-[15px]"
+            className="font-display font-extrabold tracking-tight text-white sm:mt-[10px] leading-tight -mb-[15px]"
             style={{
-              marginTop: "10px",
               marginBottom: "-15px",
               textShadow: "0 2px 10px rgba(0, 0, 0, 0.7)",
             }}
           >
-            <strong className="font-black uppercase block text-[28px] sm:text-[38px] md:text-[45px] leading-[1.1] mb-2">
+            <strong className="font-black uppercase block text-[28px] sm:text-[38px] md:text-[45px] leading-[1.1] mb-2 mt-[174px] sm:mt-0">
               NO CREDIT CARD REQUIRED!
             </strong>
             <span className="text-[#FACC15] block text-[20px] sm:text-[24px] md:text-[28px] leading-snug">
-              Huston's RENT TO BUY Option For Tools & Midsize Equipment
+              Huston's RENT TO BUY Option For Tools, vehicles & Midsize Equipment
             </span>
           </h1>
 

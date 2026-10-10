@@ -31,6 +31,7 @@ const nav = [
   { label: "Equipment", to: "/equipment", hasDropdown: true },
   { label: "How It Works", to: "/how-it-works" },
   { label: "Why M3", to: "/why-m3" },
+  { label: "Blog", to: "/blog" },
   // { label: "FAQ", to: "/faq" },
   { label: "Contact", to: "/contact" },
 ];

@@ -58,9 +58,6 @@ export const Route = createFileRoute("/equipment/$slug")({
       }
     } catch {}
 
-    if (!item) {
-      item = getEquipment(params.slug);
-    }
     if (!item) throw notFound();
     return { item, allFleet };
   },
@@ -146,8 +143,8 @@ function EquipmentDetailPage() {
         icon: Sparkles,
       },
       {
-        label: "Operation Mode",
-        value: operatorLabel[item.operator] || (item.operatorIncluded ? "Operator Included" : "Self-Operated"),
+        label: "Operation Options",
+        value: "Self-Operated or With Operator",
         icon: UserCheck,
       },
       {
@@ -415,19 +412,6 @@ function EquipmentDetailPage() {
                     </span>
                   )}
 
-                  {/* Operator Pill */}
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black tracking-wider uppercase border",
-                      item.operator !== "self"
-                        ? "bg-purple-50 text-purple-700 border-purple-200"
-                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    )}
-                  >
-                    <UserCheck className="size-3" />
-                    <span>{operatorLabel[item.operator] || "Self-Operated"}</span>
-                  </span>
-
                   {/* Live Status Pill */}
                   <span
                     className={cn(
@@ -560,14 +544,14 @@ function EquipmentDetailPage() {
                   <div className="flex items-center gap-2 text-purple-600 mb-1">
                     <UserCheck className="size-4" />
                     <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                      Operation Mode
+                      Operation Choice
                     </span>
                   </div>
                   <p className="text-sm font-black text-slate-900 mt-1">
-                    {operatorLabel[item.operator] || "Self Operated"}
+                    Self or With Operator
                   </p>
                   <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                    {item.operatorService || (item.operator !== "self" ? "Certified Operator included" : "Valid driver license")}
+                    Select preference in booking card
                   </p>
                 </div>
 

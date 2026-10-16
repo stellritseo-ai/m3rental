@@ -1,21 +1,37 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { connectDB } from "../db";
-import { equipment as defaultFleet, Equipment } from "@/data/equipment";
+import type { Equipment } from "@/data/equipment";
+import { EXCEL_FLEET_SEED as defaultFleet } from "../excel-seed.server";
+import {
+  CLOUDINARY_FLEET_FOLDER,
+  deleteFromCloudinary,
+  isCloudinaryUrl,
+  isDataUrl,
+  uploadToCloudinary,
+} from "../cloudinary.server";
 
-export type ManagedEquipmentDoc = Omit<Equipment, "year" | "color" | "monthRate" | "featured"> & {
-  id?: string | undefined;
-  year?: string | undefined;
-  color?: string | undefined;
-  monthRate?: number | undefined;
-  pricingUnit?: string | undefined;
-  operatorService?: string | undefined;
-  specs?: string | undefined;
-  featured?: boolean | undefined;
+/** Deletes a Cloudinary image only when no other product still uses it. */
+async function cleanupUnusedImage(db: import("mongodb").Db, url: string | undefined) {
+  if (!url || !isCloudinaryUrl(url)) return;
+  const stillUsed = await db.collection("equipment").countDocuments({ image: url });
+  if (stillUsed === 0) await deleteFromCloudinary(url);
+}
+
+/** Converts a pasted/selected base64 image into a permanent Cloudinary URL. */
+async function resolveImage(image: string | undefined): Promise<string | undefined> {
+  if (image && isDataUrl(image)) {
+    const uploaded = await uploadToCloudinary(image, CLOUDINARY_FLEET_FOLDER);
+    return uploaded.url;
+  }
+  return image;
+}
+
+export type ManagedEquipmentDoc = Omit<Equipment, "status"> & {
   status: "available" | "booked" | "maintenance";
-  vin?: string | undefined;
-  internalNotes?: string | undefined;
+  internalNotes?: string | null | undefined;
   updatedAt?: string | undefined;
+  _id?: any;
 };
 
 import {
@@ -37,35 +53,17 @@ export const getEquipmentDb = createServerFn({ method: "POST" })
     try {
       const db = await connectDB();
       if (!db) {
-        const { kept } = deduplicateFleet(defaultFleet);
-        const fallback = kept.map((eq) => ({
-          ...eq,
-          status: (eq.status || "available") as "available" | "booked" | "maintenance",
-        }));
-        return { success: true, equipment: fallback, source: "fallback" };
+        return { success: false, error: "Database not connected", equipment: [], source: "fallback" };
       }
 
       const equipmentCol = db.collection<ManagedEquipmentDoc>("equipment");
-      const count = await equipmentCol.countDocuments();
-
-      // Only seed if collection is completely empty
-      if (count === 0) {
-        const seedData: ManagedEquipmentDoc[] = defaultFleet.map((eq, i) => ({
-          ...eq,
-          status: (eq.status || (i === 1 ? "booked" : i === 6 ? "maintenance" : "available")) as "available" | "booked" | "maintenance",
-          vin: eq.vin || `1HGCR${1000 + i}8A00${200 + i}`,
-          updatedAt: new Date().toISOString(),
-        }));
-        await equipmentCol.insertMany(seedData);
-        console.log(`[DB] Seeded all ${seedData.length} real products from M3 Excel into MongoDB equipment collection`);
-      }
 
       const query: Record<string, any> = {};
       if (data?.category && data.category !== "all") {
         query["category"] = data.category;
       }
 
-      const rawItems = await equipmentCol.find(query).toArray();
+      const rawItems = await equipmentCol.find(query).sort({ id: 1 }).toArray();
       const formatted: ManagedEquipmentDoc[] = rawItems.map((item) => {
         const { _id, ...rest } = item as any;
         return rest as ManagedEquipmentDoc;
@@ -74,12 +72,7 @@ export const getEquipmentDb = createServerFn({ method: "POST" })
       return { success: true, equipment: formatted, source: "mongodb" };
     } catch (err: any) {
       console.error("[DB] Error fetching equipment:", err);
-      const { kept } = deduplicateFleet(defaultFleet);
-      const fallback = kept.map((eq) => ({
-        ...eq,
-        status: (eq.status || "available") as "available" | "booked" | "maintenance",
-      }));
-      return { success: false, error: err.message, equipment: fallback, source: "fallback" };
+      return { success: false, error: err.message, equipment: [], source: "fallback" };
     }
   });
 
@@ -87,27 +80,27 @@ export const getEquipmentDb = createServerFn({ method: "POST" })
 export const updateEquipmentDb = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      id: z.string().optional(),
+      id: z.string().nullable().optional(),
       slug: z.string(),
       name: z.string().optional(),
       category: z.string().optional(),
       type: z.string().optional(),
       dayRate: z.number().optional(),
-      monthRate: z.number().optional(),
-      pricingUnit: z.string().optional(),
+      monthRate: z.number().nullable().optional(),
+      pricingUnit: z.string().nullable().optional(),
       status: z.enum(["available", "booked", "maintenance"]).optional(),
       featured: z.boolean().optional(),
       image: z.string().optional(),
-      color: z.string().optional(),
-      year: z.string().optional(),
+      color: z.string().nullable().optional(),
+      year: z.string().nullable().optional(),
       summary: z.string().optional(),
       features: z.array(z.string()).optional(),
-      specs: z.string().optional(),
+      specs: z.string().nullable().optional(),
       operator: z.string().optional(),
       operatorIncluded: z.boolean().optional(),
-      operatorService: z.string().optional(),
-      internalNotes: z.string().optional(),
-      vin: z.string().optional(),
+      operatorService: z.string().nullable().optional(),
+      internalNotes: z.string().nullable().optional(),
+      vin: z.string().nullable().optional(),
     })
   )
   .handler(async ({ data }) => {
@@ -119,66 +112,97 @@ export const updateEquipmentDb = createServerFn({ method: "POST" })
 
     try {
       const db = await connectDB();
-      if (db) {
-        const equipmentCol = db.collection<ManagedEquipmentDoc>("equipment");
-        const filter = {
-          $or: [
-            { slug },
-            { slug: slug.toLowerCase() },
-            ...(id ? [{ id }, { id: id.toUpperCase() }, { id: id.toLowerCase() }] : []),
-          ],
-        };
-        const result = await equipmentCol.updateOne(
-          filter,
-          { $set: updatePayload },
-          { upsert: false }
-        );
-        console.log(`[DB] Updated equipment ${slug} in MongoDB (matched: ${result.matchedCount}, modified: ${result.modifiedCount})`);
-
-        if (result.matchedCount === 0) {
-          await equipmentCol.updateOne(
-            { slug },
-            { $set: { ...updatePayload, slug, ...(id ? { id } : {}) } },
-            { upsert: true }
-          );
-          console.log(`[DB] Upserted equipment ${slug} into MongoDB`);
-        }
+      if (!db) {
+        return { success: false, persisted: false, error: "Database is not connected.", slug, updates: updatePayload };
       }
-    } catch (err: any) {
-      console.warn("[DB] Error updating equipment in MongoDB:", err);
-    }
 
-    return { success: true, slug, updates: updatePayload };
+      const equipmentCol = db.collection<ManagedEquipmentDoc>("equipment");
+      const filter = {
+        $or: [
+          { slug },
+          { slug: slug.toLowerCase() },
+          ...(id ? [{ id }, { id: id.toUpperCase() }, { id: id.toLowerCase() }] : []),
+        ],
+      };
+
+      // Image sync: a new/replaced image is uploaded to Cloudinary and only its URL is stored in MongoDB.
+      let previousImage: string | undefined;
+      if (typeof updatePayload["image"] === "string") {
+        const existing = await equipmentCol.findOne(filter, { projection: { image: 1 } });
+        previousImage = existing?.image;
+        updatePayload["image"] = await resolveImage(updatePayload["image"]);
+      }
+
+      const result = await equipmentCol.updateOne(filter, { $set: updatePayload }, { upsert: false });
+      console.log(`[DB] Updated equipment ${slug} in MongoDB (matched: ${result.matchedCount}, modified: ${result.modifiedCount})`);
+
+      if (result.matchedCount === 0) {
+        await equipmentCol.updateOne(
+          { slug },
+          { $set: { ...updatePayload, slug, ...(id ? { id } : {}) } },
+          { upsert: true }
+        );
+        console.log(`[DB] Upserted equipment ${slug} into MongoDB`);
+      }
+
+      // Remove the replaced Cloudinary asset once nothing references it any more
+      if (previousImage && updatePayload["image"] && previousImage !== updatePayload["image"]) {
+        await cleanupUnusedImage(db, previousImage);
+      }
+
+      return {
+        success: true,
+        persisted: true,
+        slug,
+        image: updatePayload["image"] as string | undefined,
+        updates: updatePayload,
+      };
+    } catch (err: any) {
+      console.error("[DB] Error updating equipment in MongoDB:", err);
+      return { success: false, persisted: false, error: err.message as string, slug, updates: updatePayload };
+    }
   });
 
 // ── 3. Create New Equipment Product ──────────────────────────────────────
 export const createEquipmentDb = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
-      id: z.string().optional(),
+      id: z.string().nullable().optional(),
       slug: z.string(),
       name: z.string(),
-      year: z.string().optional(),
+      year: z.string().nullable().optional(),
       category: z.string(),
       type: z.string(),
-      color: z.string().optional(),
+      color: z.string().nullable().optional(),
       summary: z.string(),
       features: z.array(z.string()),
       dayRate: z.number(),
-      monthRate: z.number().optional(),
-      pricingUnit: z.string().optional(),
+      monthRate: z.number().nullable().optional(),
+      pricingUnit: z.string().nullable().optional(),
       operator: z.enum(["self", "operator", "driver", "driver-operator"]),
       operatorIncluded: z.boolean().optional(),
-      operatorService: z.string().optional(),
-      specs: z.string().optional(),
+      operatorService: z.string().nullable().optional(),
+      specs: z.string().nullable().optional(),
       featured: z.boolean().optional(),
       image: z.string(),
       status: z.enum(["available", "booked", "maintenance"]),
-      vin: z.string().optional(),
-      internalNotes: z.string().optional(),
+      vin: z.string().nullable().optional(),
+      internalNotes: z.string().nullable().optional(),
     })
   )
   .handler(async ({ data }) => {
+    let imageUrl = data.image;
+    try {
+      imageUrl = (await resolveImage(data.image)) || data.image;
+    } catch (err: any) {
+      return { success: false, persisted: false, error: `Image upload failed: ${err.message}` } as {
+        success: boolean;
+        persisted: boolean;
+        error?: string;
+        equipment?: ManagedEquipmentDoc;
+      };
+    }
+
     const doc: ManagedEquipmentDoc = {
       slug: data.slug,
       name: data.name,
@@ -188,7 +212,7 @@ export const createEquipmentDb = createServerFn({ method: "POST" })
       features: data.features,
       dayRate: data.dayRate,
       operator: data.operator,
-      image: data.image,
+      image: imageUrl,
       status: data.status,
       updatedAt: new Date().toISOString(),
       ...(data.id ? { id: data.id } : {}),
@@ -206,15 +230,23 @@ export const createEquipmentDb = createServerFn({ method: "POST" })
 
     try {
       const db = await connectDB();
-      if (db) {
-        await db.collection("equipment").insertOne(doc as any);
-        console.log(`[DB] Added new equipment ${data.slug} to MongoDB`);
+      if (!db) {
+        return { success: false, persisted: false, error: "Database is not connected.", equipment: doc };
       }
+      await db.collection("equipment").insertOne(doc as any);
+      console.log(`[DB] Added new equipment ${data.slug} to MongoDB`);
+      const { _id, ...clean } = doc as any;
+      return { success: true, persisted: true, equipment: clean as ManagedEquipmentDoc };
     } catch (err: any) {
+      const duplicate = err?.code === 11000;
       console.warn("[DB] Error creating equipment in MongoDB:", err);
+      return {
+        success: false,
+        persisted: false,
+        error: duplicate ? "A product with this ID or slug already exists." : (err.message as string),
+        equipment: doc,
+      };
     }
-
-    return { success: true, equipment: doc };
   });
 
 // ── 4. Delete Equipment Product ──────────────────────────────────────────
@@ -224,8 +256,11 @@ export const deleteEquipmentDb = createServerFn({ method: "POST" })
     try {
       const db = await connectDB();
       if (db) {
-        await db.collection("equipment").deleteOne({ slug: data.slug });
+        const col = db.collection("equipment");
+        const doc = await col.findOne({ slug: data.slug }, { projection: { image: 1 } });
+        await col.deleteOne({ slug: data.slug });
         console.log(`[DB] Deleted equipment ${data.slug} from MongoDB`);
+        await cleanupUnusedImage(db, doc?.["image"]);
       }
       return { success: true, slug: data.slug };
     } catch (err: any) {

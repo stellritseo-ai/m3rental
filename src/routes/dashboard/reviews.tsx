@@ -46,80 +46,16 @@ export interface CustomerReview {
 
 const STORAGE_KEY_REVIEWS = "m3_rental_reviews_v1";
 
-const SEED_REVIEWS: CustomerReview[] = [
-  {
-    id: "rev-1",
-    author: "Carlos Mendoza",
-    company: "Mendoza General Contracting",
-    email: "carlos.m@houstonbuild.com",
-    vehicleSlug: "2008-honda-ridgeline-midsize-pickup",
-    vehicleName: "2008 Honda Ridgeline Midsize Pickup Truck",
-    rating: 5,
-    date: "2026-10-04",
-    title: "Bed trunk is a game changer for tools & Houston weather",
-    comment:
-      "Rented the Ridgeline for a three-day remodel job in Southwest Houston. The lockable in-bed trunk kept all my Milwaukee power tools bone dry during an afternoon downpour. Clean truck, easy contactless pick-up.",
-    status: "published",
-    verifiedRenter: true,
-  },
-  {
-    id: "rev-2",
-    author: "Marcus Vance",
-    company: "Vance Utility Lighting",
-    email: "mvance@vanceelectric.net",
-    vehicleSlug: "international-4300-bucket-truck",
-    vehicleName: "International 4300 Heavy Bucket Truck",
-    rating: 5,
-    date: "2026-09-28",
-    title: "Hydraulics inspected, delivered right to our jobsite on time",
-    comment:
-      "Dispatch was top notch. The bucket truck boom had fresh safety certs and operated smoothly on our 45ft commercial parking lot retrofit. Will definitely rent again next week.",
-    status: "published",
-    verifiedRenter: true,
-  },
-  {
-    id: "rev-3",
-    author: "Elena Rostova",
-    company: "Lone Star Event Productions",
-    email: "elena@lonestarevents.org",
-    vehicleSlug: "24-passenger-commercial-shuttle-bus",
-    vehicleName: "24-Passenger Commercial Shuttle Bus",
-    rating: 5,
-    date: "2026-09-20",
-    title: "Cold dual AC and spotless interior for corporate group",
-    comment:
-      "Transferred 22 VIP executives from George Bush Intercontinental (IAH) to Downtown Houston. In 95-degree Texas heat, the air conditioning blew ice cold and the driver was thrilled with how smooth it handled.",
-    status: "published",
-    verifiedRenter: true,
-  },
-  {
-    id: "rev-4",
-    author: "Derrick Holbrook",
-    company: "Holbrook Hauling & Dirt",
-    email: "derrick@holbrookdirt.com",
-    vehicleSlug: "2018-toyota-tundra-sr5-trd-off-road",
-    vehicleName: "2018 Toyota Tundra SR5 TRD Off-Road CrewMax",
-    rating: 5,
-    date: "2026-09-12",
-    title: "Solid 5.7L V8 tow capability for our equipment trailer",
-    comment:
-      "Needed a dependable tow rig while our primary dually was in the diesel shop. Hauled a 7,000-lb mini excavator across Beltway 8 with zero sweat. Reasonable daily rate too.",
-    status: "published",
-    verifiedRenter: true,
-  },
-];
+const SEED_REVIEWS: CustomerReview[] = [];
 
 function getStoredReviews(): CustomerReview[] {
-  if (typeof window === "undefined") return SEED_REVIEWS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_REVIEWS);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY_REVIEWS, JSON.stringify(SEED_REVIEWS));
-      return SEED_REVIEWS;
-    }
+    if (!raw) return [];
     return JSON.parse(raw);
   } catch {
-    return SEED_REVIEWS;
+    return [];
   }
 }
 
@@ -133,7 +69,7 @@ function saveStoredReviews(items: CustomerReview[]): void {
   }
 }
 
-import { getReviewsDb, updateReviewDb, deleteReviewDb } from "@/lib/api/reviews.functions";
+import { getReviewsDb, updateReviewDb, deleteReviewDb, createReviewDb } from "@/lib/api/reviews.functions";
 
 function DashboardReviewsPage() {
   const [reviews, setReviews] = useState<CustomerReview[]>(getStoredReviews);
@@ -142,6 +78,7 @@ function DashboardReviewsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "published" | "pending" | "hidden">("all");
   const [isAddingModal, setIsAddingModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New review form
   const [newAuthor, setNewAuthor] = useState("");
@@ -153,11 +90,10 @@ function DashboardReviewsPage() {
   const [newComment, setNewComment] = useState("");
 
   const loadData = async () => {
-    setReviews(getStoredReviews());
     setIsSyncing(true);
     try {
       const res = await getReviewsDb();
-      if (res && res.success && res.reviews && res.reviews.length > 0) {
+      if (res && res.success && (res as any).source === "mongodb" && Array.isArray(res.reviews)) {
         setReviews(res.reviews as unknown as CustomerReview[]);
         saveStoredReviews(res.reviews as unknown as CustomerReview[]);
       }
@@ -194,62 +130,91 @@ function DashboardReviewsPage() {
     });
   }, [reviews, search, ratingFilter, statusFilter]);
 
-  const toggleStatus = (id: string) => {
-    let nextStatus: "published" | "hidden" = "published";
-    const next = reviews.map((r) => {
-      if (r.id !== id) return r;
-      nextStatus = r.status === "published" ? "hidden" : "published";
-      return { ...r, status: nextStatus };
-    });
-    setReviews(next);
-    saveStoredReviews(next);
-    updateReviewDb({ data: { id, status: nextStatus } }).catch(() => {});
-    toast.success("Review visibility updated in MongoDB!");
+  const toggleStatus = async (id: string) => {
+    const current = reviews.find((r) => r.id === id);
+    if (!current) return;
+    const nextStatus: "published" | "hidden" = current.status === "published" ? "hidden" : "published";
+
+    try {
+      const res = await updateReviewDb({ data: { id, status: nextStatus } });
+      if (!res || !res.success) {
+        toast.error((res as any)?.error || "Failed to update review status in database");
+        return;
+      }
+      const next = reviews.map((r) => (r.id === id ? { ...r, status: nextStatus } : r));
+      setReviews(next);
+      saveStoredReviews(next);
+      toast.success("Review visibility updated in MongoDB!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update status");
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this customer review?")) return;
-    const next = reviews.filter((r) => r.id !== id);
-    setReviews(next);
-    saveStoredReviews(next);
-    deleteReviewDb({ data: { id } }).catch(() => {});
-    toast.success("Review deleted from MongoDB.");
+    try {
+      const res = await deleteReviewDb({ data: { id } });
+      if (!res || !res.success) {
+        toast.error((res as any)?.error || "Failed to delete from database");
+        return;
+      }
+      const next = reviews.filter((r) => r.id !== id);
+      setReviews(next);
+      saveStoredReviews(next);
+      toast.success("Review deleted from MongoDB.");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete review");
+    }
   };
 
-  const handleAddReview = (e: React.FormEvent) => {
+  const handleAddReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAuthor || !newTitle || !newComment) {
+    if (!newAuthor.trim() || !newTitle.trim() || !newComment.trim()) {
       toast.error("Please fill in author, title, and review comments.");
       return;
     }
 
-    const created: CustomerReview = {
-      id: `rev-${Date.now()}`,
-      author: newAuthor,
-      ...(newCompany ? { company: newCompany } : {}),
-      email: newEmail || "client@houston.com",
-      vehicleSlug: "2008-honda-ridgeline-midsize-pickup",
-      vehicleName: newVehicleName,
-      rating: newRating,
-      date: new Date().toISOString().split("T")[0] ?? "2026-10-07",
-      title: newTitle,
-      comment: newComment,
-      status: "published",
-      verifiedRenter: true,
-    };
+    setIsSubmitting(true);
+    try {
+      const slug = newVehicleName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      const res = await createReviewDb({
+        data: {
+          author: newAuthor.trim(),
+          company: newCompany.trim() || undefined,
+          email: newEmail.trim() || "client@houston.com",
+          vehicleSlug: slug || "vehicle",
+          vehicleName: newVehicleName.trim(),
+          rating: newRating,
+          title: newTitle.trim(),
+          comment: newComment.trim(),
+          status: "published",
+          verifiedRenter: true,
+        },
+      });
 
-    const next = [created, ...reviews];
-    setReviews(next);
-    saveStoredReviews(next);
-    setIsAddingModal(false);
+      if (!res || !res.success || !res.review) {
+        toast.error((res as any)?.error || "Failed to save review to database");
+        return;
+      }
 
-    // Reset form
-    setNewAuthor("");
-    setNewCompany("");
-    setNewEmail("");
-    setNewTitle("");
-    setNewComment("");
-    toast.success("Verified customer review added and published!");
+      const created = res.review as unknown as CustomerReview;
+      const next = [created, ...reviews];
+      setReviews(next);
+      saveStoredReviews(next);
+      setIsAddingModal(false);
+
+      // Reset form
+      setNewAuthor("");
+      setNewCompany("");
+      setNewEmail("");
+      setNewTitle("");
+      setNewComment("");
+      toast.success("Verified customer review added and saved to MongoDB!");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save review");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const avgRating = reviews.length > 0
@@ -592,9 +557,17 @@ function DashboardReviewsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#0040DD] text-white text-xs font-bold hover:bg-[#0036ba] shadow-xs"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 rounded-xl bg-[#0040DD] text-white text-xs font-bold hover:bg-[#0036ba] shadow-xs disabled:opacity-50 inline-flex items-center gap-1.5"
                 >
-                  Save & Publish
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="size-3.5 animate-spin" />
+                      <span>Saving to MongoDB...</span>
+                    </>
+                  ) : (
+                    <span>Save & Publish</span>
+                  )}
                 </button>
               </div>
             </form>

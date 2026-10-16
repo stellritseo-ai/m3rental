@@ -11,13 +11,14 @@ import {
 } from "lucide-react";
 import { Reveal } from "@/components/site/Reveal";
 import { EquipmentCard } from "@/components/site/EquipmentCard";
-import { featuredEquipment } from "@/data/equipment";
+import type { Equipment } from "@/data/equipment";
 import { useManagedFleet } from "@/lib/dashboard-store";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-export function FeaturedSection() {
-  const { fleet } = useManagedFleet();
+export function FeaturedSection({ initialFleet }: { initialFleet?: Equipment[] } = {}) {
+  const { fleet: hookFleet } = useManagedFleet();
+  const fleet = hookFleet && hookFleet.length > 0 ? hookFleet : (initialFleet || []);
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const tabs = [
@@ -28,10 +29,9 @@ export function FeaturedSection() {
   ];
 
   const liveFeatured = useMemo(() => {
-    const list = fleet && fleet.length > 0 ? fleet : featuredEquipment;
-    const explicitlyFeatured = list.filter((item) => item.featured);
+    const explicitlyFeatured = fleet.filter((item) => item.featured);
     if (explicitlyFeatured.length > 0) return explicitlyFeatured;
-    return list.slice(0, 8);
+    return fleet.slice(0, 8);
   }, [fleet]);
 
   const filteredItems = useMemo(() => {

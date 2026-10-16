@@ -44,6 +44,7 @@ import {
 } from "@/lib/booking-store";
 import { getPaymentSettingsDb } from "@/lib/api/payments.functions";
 import { site } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 interface Props {
   vehicle: Equipment;
@@ -62,6 +63,13 @@ export function VehicleBookingCard({ vehicle }: Props) {
   const [pickupDate, setPickupDate] = useState<string>("");
   const [returnDate, setReturnDate] = useState<string>("");
 
+  // Operation mode preference state ("self" vs "operator")
+  const [operationMode, setOperationMode] = useState<"self" | "operator">("self");
+
+  // Terms and conditions acceptance
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
   // Customer information state
   const [customer, setCustomer] = useState({
     fullName: "",
@@ -75,6 +83,8 @@ export function VehicleBookingCard({ vehicle }: Props) {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("zelle");
   const [paymentScreenshot, setPaymentScreenshot] = useState<string>("");
   const [screenshotFileName, setScreenshotFileName] = useState<string>("");
+  const [governmentId, setGovernmentId] = useState<string>("");
+  const [govIdFileName, setGovIdFileName] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<Booking | null>(null);
 
@@ -188,6 +198,40 @@ export function VehicleBookingCard({ vehicle }: Props) {
     setScreenshotFileName("");
   };
 
+  const handleGovIdUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Please upload a valid image file (JPG, JPEG, or PNG).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image file size exceeds 10MB limit.");
+      return;
+    }
+
+    setGovIdFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setGovernmentId(result);
+      toast.success("Government ID uploaded!");
+    };
+    reader.onerror = () => {
+      toast.error("Failed to read image file.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeGovId = () => {
+    setGovernmentId("");
+    setGovIdFileName("");
+  };
+
   // Step 1 -> Step 2 validation
   const handleProceedToCustomer = () => {
     if (!pickupDate || !returnDate) {
@@ -204,6 +248,10 @@ export function VehicleBookingCard({ vehicle }: Props) {
     }
     if (!availabilityCheck.available) {
       toast.error(availabilityCheck.conflictReason || "Selected dates are unavailable.");
+      return;
+    }
+    if (!acceptedTerms) {
+      toast.error("Please agree to the Terms & Conditions before proceeding to customer details.");
       return;
     }
     setStep("customer");
@@ -234,8 +282,8 @@ export function VehicleBookingCard({ vehicle }: Props) {
   const handleSubmitBooking = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (paymentMethod !== "cash" && !paymentScreenshot) {
-      toast.error("Please upload a screenshot of your successful payment.");
+    if (paymentMethod !== "cash" && !paymentScreenshot && !governmentId) {
+      toast.error("Please upload your payment screenshot and government ID.");
       return;
     }
 
@@ -257,8 +305,10 @@ export function VehicleBookingCard({ vehicle }: Props) {
         customer,
         pickupDate,
         returnDate,
+        operationMode,
         paymentMethod,
-        paymentScreenshot: paymentMethod === "cash" ? "CASH_UPON_YARD_PICKUP" : paymentScreenshot,
+        paymentScreenshot: paymentMethod === "cash" ? "CASH_UPON_YARD_PICKUP" : (paymentScreenshot || governmentId),
+        governmentId: governmentId || undefined,
       });
 
       setIsSubmitting(false);
@@ -475,6 +525,80 @@ export function VehicleBookingCard({ vehicle }: Props) {
               </div>
             )}
 
+            {/* ── OPERATION PREFERENCE SELECTION ── */}
+            <div className="space-y-2 pt-0.5">
+              <label className="block text-xs font-bold text-slate-800">
+                Do you want Self Operated or With Operator? <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setOperationMode("self")}
+                  className={cn(
+                    "relative flex flex-col p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
+                    operationMode === "self"
+                      ? "border-[#0040DD] bg-blue-50/70 ring-2 ring-[#0040DD]/20 shadow-2xs"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <User className="size-3.5 text-[#0040DD]" />
+                      Self Operated
+                    </span>
+                    <span
+                      className={cn(
+                        "size-4 rounded-full border flex items-center justify-center transition-all",
+                        operationMode === "self"
+                          ? "border-[#0040DD] bg-[#0040DD]"
+                          : "border-slate-300 bg-white"
+                      )}
+                    >
+                      {operationMode === "self" && (
+                        <span className="size-1.5 rounded-full bg-white" />
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium leading-snug">
+                    You operate or drive yourself with a valid driver license.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOperationMode("operator")}
+                  className={cn(
+                    "relative flex flex-col p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
+                    operationMode === "operator"
+                      ? "border-[#16A34A] bg-emerald-50/70 ring-2 ring-[#16A34A]/20 shadow-2xs"
+                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                  )}
+                >
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                      <ShieldCheck className="size-3.5 text-[#16A34A]" />
+                      With Operator
+                    </span>
+                    <span
+                      className={cn(
+                        "size-4 rounded-full border flex items-center justify-center transition-all",
+                        operationMode === "operator"
+                          ? "border-[#16A34A] bg-[#16A34A]"
+                          : "border-slate-300 bg-white"
+                      )}
+                    >
+                      {operationMode === "operator" && (
+                        <span className="size-1.5 rounded-full bg-white" />
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-medium leading-snug">
+                    Certified professional machine operator dispatched with unit.
+                  </p>
+                </button>
+              </div>
+            </div>
+
             {/* Price Calculation Card (Clean & Compact) */}
             <div className="rounded-xl border border-slate-200/90 bg-slate-50/70 p-4 space-y-2.5 shadow-2xs">
               <div className="flex justify-between text-xs text-slate-600 font-medium">
@@ -485,6 +609,22 @@ export function VehicleBookingCard({ vehicle }: Props) {
                 <span>Rental Duration:</span>
                 <span className="font-bold text-slate-900">
                   {rentalDays > 0 ? `${rentalDays} Day${rentalDays > 1 ? "s" : ""}` : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-600 font-medium">
+                <span>Operation Mode:</span>
+                <span className="font-bold text-slate-900 flex items-center gap-1">
+                  {operationMode === "operator" ? (
+                    <span className="text-purple-700 font-extrabold flex items-center gap-1">
+                      <ShieldCheck className="size-3 text-purple-600" />
+                      With Operator
+                    </span>
+                  ) : (
+                    <span className="text-slate-900 font-bold flex items-center gap-1">
+                      <User className="size-3 text-[#0040DD]" />
+                      Self Operated
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="pt-2 border-t border-slate-200 flex justify-between items-baseline">
@@ -500,11 +640,47 @@ export function VehicleBookingCard({ vehicle }: Props) {
               </div>
             </div>
 
+            {/* ── TERMS & CONDITIONS CHECKBOX ── */}
+            <div className="pt-0.5">
+              <label
+                htmlFor={`${formId}-terms`}
+                className={cn(
+                  "flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer select-none",
+                  acceptedTerms
+                    ? "border-blue-200 bg-blue-50/50 shadow-2xs"
+                    : "border-slate-200 bg-slate-50/80 hover:bg-slate-50 hover:border-slate-300"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  id={`${formId}-terms`}
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-0.5 size-4 rounded-md border-slate-300 text-[#0040DD] focus:ring-[#0040DD]/30 cursor-pointer shrink-0"
+                />
+                <span className="text-xs text-slate-700 font-medium leading-relaxed">
+                  I agree to the{" "}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowTermsModal(true);
+                    }}
+                    className="font-bold text-[#0040DD] underline hover:text-blue-800 cursor-pointer inline"
+                  >
+                    Terms &amp; Conditions
+                  </button>{" "}
+                  and Commercial Rental Agreement. <span className="text-red-500 font-bold">*</span>
+                </span>
+              </label>
+            </div>
+
             {/* Action button */}
             <button
               type="button"
               onClick={handleProceedToCustomer}
-              disabled={!pickupDate || !returnDate || !availabilityCheck.available}
+              disabled={!pickupDate || !returnDate || !availabilityCheck.available || !acceptedTerms}
               className="w-full btn-base btn-primary font-black uppercase tracking-wider shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-xs sm:text-sm py-3.5 transition-all"
             >
               <span>Continue to Customer Details</span>
@@ -526,8 +702,12 @@ export function VehicleBookingCard({ vehicle }: Props) {
               >
                 <ArrowLeft className="size-3.5" /> Back to dates
               </button>
-              <span className="text-xs font-bold text-[#0040DD] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                {rentalDays} Days: ${totalAmount}.00
+              <span className="text-xs font-bold text-[#0040DD] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 flex items-center gap-1.5">
+                <span>{rentalDays} Days: ${totalAmount}.00</span>
+                <span className="text-slate-300">•</span>
+                <span className={operationMode === "operator" ? "text-purple-700 font-extrabold" : "text-[#0040DD]"}>
+                  {operationMode === "operator" ? "With Operator" : "Self-Operated"}
+                </span>
               </span>
             </div>
 
@@ -814,55 +994,122 @@ export function VehicleBookingCard({ vehicle }: Props) {
                   </div>
                 </div>
 
-                {/* Payment Screenshot Upload */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-700">
-                    Upload Payment Screenshot <span className="text-red-500">*</span>
-                  </label>
-
-                  {!paymentScreenshot ? (
-                    <label className="border-2 border-dashed border-slate-300 hover:border-[#0040DD] rounded-xl p-4 text-center block cursor-pointer transition-colors bg-slate-50/50 hover:bg-blue-50/30">
-                      <UploadCloud className="size-6 text-[#0040DD] mx-auto mb-1" />
-                      <span className="text-xs font-bold text-slate-700 block">
-                        Click to browse or upload screenshot
-                      </span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
-                        JPG, JPEG, PNG (Max 10MB)
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/jpg,image/webp"
-                        onChange={handleScreenshotUpload}
-                        className="hidden"
-                      />
+                {/* ── PAYMENT SCREENSHOT & GOVERNMENT ID UPLOAD SECTION ── */}
+                <div className="space-y-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-black text-slate-900 tracking-tight">
+                      Upload Payment Screenshot and Any of your Government ID <span className="text-red-500">*</span>
                     </label>
-                  ) : (
-                    <div className="rounded-xl border border-slate-200 p-2.5 bg-slate-50 flex items-center justify-between gap-3 shadow-2xs">
-                      <div className="flex items-center gap-2.5 truncate">
-                        <img
-                          src={paymentScreenshot}
-                          alt="Screenshot Preview"
-                          className="size-10 rounded-lg object-cover border border-slate-200"
-                        />
-                        <div className="truncate text-left">
-                          <span className="text-xs font-bold text-slate-800 block truncate">
-                            {screenshotFileName || "screenshot.png"}
+                    <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                      Upload your payment confirmation receipt (Zelle / Cash App) and any valid government ID (Driver's License, State ID, or Passport).
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Slot 1: Payment Screenshot */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <Banknote className="size-3 text-[#0040DD]" />
+                        Payment Screenshot <span className="text-red-500">*</span>
+                      </span>
+
+                      {!paymentScreenshot ? (
+                        <label className="border-2 border-dashed border-slate-300 hover:border-[#0040DD] rounded-xl p-3 text-center block cursor-pointer transition-colors bg-slate-50/50 hover:bg-blue-50/30 min-h-[96px] flex flex-col items-center justify-center">
+                          <UploadCloud className="size-5 text-[#0040DD] mx-auto mb-1" />
+                          <span className="text-[11px] font-bold text-slate-700 block leading-tight">
+                            Payment Screenshot
                           </span>
-                          <span className="text-[10px] text-[#16A34A] font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="size-2.5" /> Uploaded successfully
+                          <span className="text-[9.5px] text-slate-400 block mt-0.5">
+                            Zelle / Cash App Receipt
                           </span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg,image/webp"
+                            onChange={handleScreenshotUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      ) : (
+                        <div className="rounded-xl border border-slate-200 p-2 bg-slate-50 flex items-center justify-between gap-2 shadow-2xs min-h-[96px]">
+                          <div className="flex items-center gap-2 truncate">
+                            <img
+                              src={paymentScreenshot}
+                              alt="Payment Proof"
+                              className="size-12 rounded-lg object-cover border border-slate-200 shrink-0"
+                            />
+                            <div className="truncate text-left">
+                              <span className="text-[11px] font-bold text-slate-800 block truncate">
+                                {screenshotFileName || "payment-proof.png"}
+                              </span>
+                              <span className="text-[9.5px] text-[#16A34A] font-semibold flex items-center gap-1">
+                                <CheckCircle2 className="size-2.5" /> Attached
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={removeScreenshot}
+                            className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                            title="Remove payment screenshot"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
                         </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={removeScreenshot}
-                        className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
-                        title="Remove screenshot"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      )}
                     </div>
-                  )}
+
+                    {/* Slot 2: Government ID */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <User className="size-3 text-[#16A34A]" />
+                        Government ID <span className="text-slate-400 font-normal">(Driver License/ID)</span>
+                      </span>
+
+                      {!governmentId ? (
+                        <label className="border-2 border-dashed border-slate-300 hover:border-[#16A34A] rounded-xl p-3 text-center block cursor-pointer transition-colors bg-slate-50/50 hover:bg-emerald-50/30 min-h-[96px] flex flex-col items-center justify-center">
+                          <UploadCloud className="size-5 text-[#16A34A] mx-auto mb-1" />
+                          <span className="text-[11px] font-bold text-slate-700 block leading-tight">
+                            Government ID
+                          </span>
+                          <span className="text-[9.5px] text-slate-400 block mt-0.5">
+                            Driver License, State ID, Passport
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/jpg,image/webp"
+                            onChange={handleGovIdUpload}
+                            className="hidden"
+                          />
+                        </label>
+                      ) : (
+                        <div className="rounded-xl border border-slate-200 p-2 bg-slate-50 flex items-center justify-between gap-2 shadow-2xs min-h-[96px]">
+                          <div className="flex items-center gap-2 truncate">
+                            <img
+                              src={governmentId}
+                              alt="Government ID"
+                              className="size-12 rounded-lg object-cover border border-slate-200 shrink-0"
+                            />
+                            <div className="truncate text-left">
+                              <span className="text-[11px] font-bold text-slate-800 block truncate">
+                                {govIdFileName || "government-id.png"}
+                              </span>
+                              <span className="text-[9.5px] text-[#16A34A] font-semibold flex items-center gap-1">
+                                <CheckCircle2 className="size-2.5" /> Attached
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={removeGovId}
+                            className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                            title="Remove Government ID"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </>
             )}
@@ -870,7 +1117,7 @@ export function VehicleBookingCard({ vehicle }: Props) {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting || (paymentMethod !== "cash" && !paymentScreenshot)}
+              disabled={isSubmitting || (paymentMethod !== "cash" && !paymentScreenshot && !governmentId)}
               className="w-full btn-base btn-primary font-black uppercase tracking-wider shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-xs sm:text-sm py-3.5 transition-all"
             >
               {isSubmitting
@@ -915,6 +1162,12 @@ export function VehicleBookingCard({ vehicle }: Props) {
               <div className="flex justify-between">
                 <span className="text-slate-500">Dates:</span>
                 <span className="font-bold text-slate-900">{confirmedBooking.pickupDate} → {confirmedBooking.returnDate}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Operation:</span>
+                <span className="font-bold text-slate-900">
+                  {confirmedBooking.operationMode === "operator" ? "With Certified Operator" : "Self-Operated"}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Total:</span>
@@ -1024,6 +1277,98 @@ export function VehicleBookingCard({ vehicle }: Props) {
             >
               Done Scanning
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TERMS & CONDITIONS MODAL ── */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="size-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0040DD]">
+                  <ShieldCheck className="size-4" />
+                </div>
+                <div>
+                  <h3 className="font-display font-black text-slate-900 text-base">
+                    M3 Rental Terms &amp; Conditions
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Houston Commercial Yard Rental Policies
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="size-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-600 leading-relaxed">
+              <div className="p-3.5 rounded-xl bg-blue-50/60 border border-blue-100 space-y-1">
+                <p className="font-extrabold text-[#0040DD] text-xs">
+                  1. Operation &amp; Driver Qualifications
+                </p>
+                <p>
+                  <strong>Self-Operated:</strong> The designated renter/driver must be at least 21 years old and possess a valid, government-issued driver's license. All equipment must be operated within manufacturer rated payload and safety limits.
+                </p>
+                <p>
+                  <strong>With Operator:</strong> Units rented with an operator will be operated exclusively by certified M3 commercial operators for the contracted shift duration.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-emerald-50/60 border border-emerald-100 space-y-1">
+                <p className="font-extrabold text-[#16A34A] text-xs">
+                  2. Payment &amp; Zero Credit Trap Guarantee
+                </p>
+                <p>
+                  We accept Cash, Zelle, and Cash App directly. We do NOT run credit bureau score inquiries or place predatory holds on your credit report. Full rental amount and standard refundable security deposit must be cleared before yard departure.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <p className="font-extrabold text-slate-900 text-xs">
+                  3. Yard Pick-up &amp; Return Inspection
+                </p>
+                <p>
+                  Equipment is inspected jointly at our Houston yard (10503 S Wilcrest Dr, Houston, TX 77099). Renter agrees to return equipment in the same condition as dispatched, normal wear and tear excepted.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+                <p className="font-extrabold text-slate-900 text-xs">
+                  4. Flexible Rescheduling
+                </p>
+                <p>
+                  Need to change dates due to weather or jobsite delays? Call our dispatch desk at (281) 933-5000 with 24 hours notice to reschedule at no additional penalty.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="btn-base btn-outline text-xs font-bold py-2.5 px-4 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAcceptedTerms(true);
+                  setShowTermsModal(false);
+                  toast.success("Terms & Conditions accepted!");
+                }}
+                className="btn-base btn-primary text-xs font-black uppercase tracking-wider py-2.5 px-5 cursor-pointer shadow-md flex items-center gap-1.5"
+              >
+                <Check className="size-3.5" /> Accept &amp; Continue
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -64,6 +64,8 @@ export const getPaymentSettingsDb = createServerFn({ method: "POST" })
     }
   });
 
+import { isDataUrl, uploadToCloudinary } from "../cloudinary.server";
+
 // ── 2. Update Payment Settings in Database ────────────────────────────────
 export const updatePaymentSettingsDb = createServerFn({ method: "POST" })
   .inputValidator(
@@ -84,10 +86,31 @@ export const updatePaymentSettingsDb = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const updatedAt = new Date().toISOString();
+    let zelleQr = data.zelle.qrCodeUrl;
+    let cashappQr = data.cashapp.qrCodeUrl;
+
+    if (isDataUrl(zelleQr)) {
+      try {
+        const up = await uploadToCloudinary(zelleQr, "m3-rental-payment-qr");
+        zelleQr = up.url;
+      } catch (err) {
+        console.warn("[Cloudinary] Failed to upload Zelle QR:", err);
+      }
+    }
+
+    if (isDataUrl(cashappQr)) {
+      try {
+        const up = await uploadToCloudinary(cashappQr, "m3-rental-payment-qr");
+        cashappQr = up.url;
+      } catch (err) {
+        console.warn("[Cloudinary] Failed to upload CashApp QR:", err);
+      }
+    }
+
     const payload: PaymentSettingsDoc = {
       id: "default",
-      zelle: data.zelle,
-      cashapp: data.cashapp,
+      zelle: { ...data.zelle, qrCodeUrl: zelleQr },
+      cashapp: { ...data.cashapp, qrCodeUrl: cashappQr },
       updatedAt,
     };
 
@@ -107,3 +130,4 @@ export const updatePaymentSettingsDb = createServerFn({ method: "POST" })
 
     return { success: true, settings: payload };
   });
+

@@ -151,29 +151,13 @@ function DashboardEquipmentPage() {
     setIsSyncing(true);
     try {
       const res = await getEquipmentDb();
-      if (res && res.success && res.equipment && res.equipment.length > 0) {
-        const overrides = getFleetOverrides();
-        const merged = (res.equipment as unknown as Equipment[]).map((item) => {
-          const ov = overrides[item.slug] || (item.id ? overrides[item.id] : undefined);
-          if (!ov) return item;
-          return {
-            ...item,
-            ...(ov.dayRate !== undefined ? { dayRate: ov.dayRate } : {}),
-            ...(ov.monthRate !== undefined ? { monthRate: ov.monthRate } : {}),
-            ...(ov.pricingUnit ? { pricingUnit: ov.pricingUnit } : {}),
-            ...(ov.featured !== undefined ? { featured: ov.featured } : {}),
-            ...(ov.status ? { status: ov.status } : {}),
-          };
-        });
-        const { kept } = deduplicateFleet<Equipment>(merged);
-        setFleet(kept);
-        setManagedFleet(kept);
-      } else {
-        setFleet(getManagedFleet());
+      if (res && res.success && Array.isArray(res.equipment)) {
+        const list = res.equipment as unknown as Equipment[];
+        setFleet(list);
+        setManagedFleet(list);
       }
     } catch (e) {
       console.warn("DB fleet fetch fallback:", e);
-      setFleet(getManagedFleet());
     } finally {
       setIsSyncing(false);
     }
@@ -232,31 +216,26 @@ function DashboardEquipmentPage() {
   const handleResetFromExcel = async () => {
     if (
       !confirm(
-        "Are you sure you want to re-import all 43 real products from M3_Rental.xlsx into MongoDB and frontend? This will reset the catalog to the official Excel inventory."
+        "Are you sure you want to re-import all 47 real products from M3_Rental.xlsx into MongoDB and frontend? This will reset the catalog to the official Excel inventory."
       )
     ) {
       return;
     }
 
     setIsResettingExcel(true);
-    const toastId = toast.loading("Re-syncing all 43 products from M3_Rental.xlsx into database and frontend...");
+    const toastId = toast.loading("Re-syncing all 47 products from M3_Rental.xlsx into database and frontend...");
     try {
       const res = await resetFleetToExcelDb();
-      const freshFleet = resetCatalogToExcel();
-      if (res && res.success && res.equipment && res.equipment.length >= freshFleet.length) {
-        setFleet(res.equipment as unknown as Equipment[]);
-        setManagedFleet(res.equipment as unknown as Equipment[]);
-        toast.success(`Successfully loaded all ${res.count} products from M3 Excel into MongoDB and frontend!`, { id: toastId });
+      if (res && res.success && Array.isArray(res.equipment)) {
+        const list = res.equipment as unknown as Equipment[];
+        setFleet(list);
+        setManagedFleet(list);
+        toast.success(`Successfully loaded all ${res.count} products from M3 Excel into MongoDB!`, { id: toastId });
       } else {
-        setFleet(freshFleet);
-        setManagedFleet(freshFleet);
-        toast.success(`Successfully loaded all ${freshFleet.length} products from M3 Excel catalog!`, { id: toastId });
+        toast.error("Failed to reset catalog in MongoDB", { id: toastId });
       }
     } catch (err: any) {
-      const freshFleet = resetCatalogToExcel();
-      setFleet(freshFleet);
-      setManagedFleet(freshFleet);
-      toast.success(`Successfully loaded all ${freshFleet.length} products from M3 Excel catalog!`, { id: toastId });
+      toast.error(err?.message || "Failed to reset catalog", { id: toastId });
     } finally {
       setIsResettingExcel(false);
     }
@@ -319,7 +298,7 @@ function DashboardEquipmentPage() {
     setEditCategory(item.category);
     setEditType(item.type);
     setEditDayRate(item.dayRate);
-    setEditMonthRate(item.monthRate);
+    setEditMonthRate(item.monthRate ?? undefined);
     setEditPricingUnit((item as any).pricingUnit || "Per day");
     setEditOperator(item.operator || "self");
     setEditOperatorService((item as any).operatorService || "");
@@ -418,38 +397,41 @@ function DashboardEquipmentPage() {
       image: editImageUrl || editingItem.image,
     };
 
-    // Save locally first so UI updates immediately
-    updateManagedFleetProduct(editingItem.slug, updates as Partial<Equipment>);
-
-    saveFleetOverride({
-      ...(editingItem.id ? { id: editingItem.id } : {}),
-      slug: editingItem.slug,
-      dayRate: dayRateNum,
-      ...(monthRateNum !== undefined ? { monthRate: monthRateNum } : {}),
-      pricingUnit: editPricingUnit,
-      featured: editFeatured,
-      status: editStatus,
-    });
-
-    // Update in local state immediately
-    setFleet((prev) =>
-      prev.map((item) =>
-        item.slug === editingItem.slug || (editingItem.id && item.id === editingItem.id)
-          ? ({ ...item, ...updates } as Equipment)
-          : item
-      )
-    );
-
-    const toastId = toast.loading(`Saving "${editName}" pricing...`);
+    const toastId = toast.loading(`Saving "${editName}" to database...`);
     try {
-      await updateEquipmentDb({ data: updates });
-      toast.success(`Updated "${editName}" pricing & specs!`, { id: toastId });
-    } catch (err: any) {
-      console.warn("MongoDB update warning:", err);
-      toast.success(`Saved "${editName}" changes!`, { id: toastId });
-    }
+      // DB first: the server uploads any new image to Cloudinary and returns the permanent URL
+      const res = await updateEquipmentDb({ data: updates });
+      if (!res || !res.success) {
+        toast.error(`Could not save "${editName}": ${(res as any)?.error || "database error"}`, { id: toastId });
+        return;
+      }
 
-    setEditingItem(null);
+      const finalUpdates = { ...updates, ...(res.image ? { image: res.image } : {}) };
+
+      updateManagedFleetProduct(editingItem.slug, finalUpdates as Partial<Equipment>);
+      saveFleetOverride({
+        ...(editingItem.id ? { id: editingItem.id } : {}),
+        slug: editingItem.slug,
+        dayRate: dayRateNum,
+        ...(monthRateNum !== undefined ? { monthRate: monthRateNum } : {}),
+        pricingUnit: editPricingUnit,
+        featured: editFeatured,
+        status: editStatus,
+      });
+      setFleet((prev) =>
+        prev.map((item) =>
+          item.slug === editingItem.slug || (editingItem.id && item.id === editingItem.id)
+            ? ({ ...item, ...finalUpdates } as Equipment)
+            : item
+        )
+      );
+
+      toast.success(`Saved "${editName}" to MongoDB${res.image && res.image !== editingItem.image ? " & Cloudinary" : ""}!`, { id: toastId });
+      setEditingItem(null);
+    } catch (err: any) {
+      console.error("MongoDB update error:", err);
+      toast.error(`Could not save "${editName}": ${err?.message || "network error"}`, { id: toastId });
+    }
   };
 
   // ── Submit Add New Product Form ──
@@ -473,17 +455,18 @@ function DashboardEquipmentPage() {
       .map((f) => f.trim())
       .filter(Boolean);
 
-    // Fallback default image if none uploaded
+    // Fallback default image (hosted on Cloudinary) if none uploaded
+    const CLD = "https://res.cloudinary.com/j44njcfx/image/upload";
     const defaultPlaceholder =
       newCategory === "trailers"
-        ? "/src/assets/eq-equipment-trailer.jpg"
+        ? `${CLD}/v1792079369/m3-rental-fleet/eq-equipment-trailer.jpg`
         : newCategory === "trucks"
-        ? "/src/assets/eq-bucket-truck.jpg"
+        ? `${CLD}/v1792079363/m3-rental-fleet/eq-bucket-truck.jpg`
         : newCategory === "cars"
-        ? "/src/assets/eq-sedan-black.jpg"
+        ? `${CLD}/v1792079375/m3-rental-fleet/eq-sedan-black.jpg`
         : newCategory === "suvs"
-        ? "/src/assets/eq-compact-suv.jpg"
-        : "/src/assets/eq-tractor-backhoe.jpg";
+        ? `${CLD}/v1792079366/m3-rental-fleet/eq-compact-suv.jpg`
+        : `${CLD}/v1792079378/m3-rental-fleet/eq-tractor-backhoe.jpg`;
 
     const finalImage = newImageUrl.trim() || defaultPlaceholder;
 
@@ -509,18 +492,25 @@ function DashboardEquipmentPage() {
       image: finalImage,
     };
 
+    const toastId = toast.loading(`Adding "${newName}" to database...`);
+    let savedProduct = payload as unknown as Equipment;
     try {
       const res = await createEquipmentDb({ data: payload });
-      if (res && res.success) {
-        toast.success(`Added "${newName}" directly to MongoDB!`);
+      if (!res || !res.success) {
+        toast.error(`Could not add "${newName}": ${(res as any)?.error || "database error"}`, { id: toastId });
+        return;
       }
+      if (res.equipment) savedProduct = res.equipment as unknown as Equipment;
+      toast.success(`Added "${newName}" to MongoDB!`, { id: toastId });
     } catch (err: any) {
-      console.warn("MongoDB create error:", err);
+      console.error("MongoDB create error:", err);
+      toast.error(`Could not add "${newName}": ${err?.message || "network error"}`, { id: toastId });
+      return;
     }
 
-    addManagedFleetProduct(payload as unknown as Equipment);
-    saveCustomProduct(payload as unknown as Equipment);
-    setFleet((prev) => [payload as unknown as Equipment, ...prev]);
+    addManagedFleetProduct(savedProduct);
+    saveCustomProduct(savedProduct);
+    setFleet((prev) => [savedProduct, ...prev]);
 
     // Reset form
     setNewId("");
@@ -663,7 +653,7 @@ function DashboardEquipmentPage() {
             onClick={handleResetFromExcel}
             disabled={isResettingExcel}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800 hover:bg-emerald-100 shadow-2xs transition-all active:scale-95 cursor-pointer"
-            title="Re-seed MongoDB with all 43 real products from M3_Rental.xlsx"
+            title="Re-seed MongoDB with all 47 real products from M3_Rental.xlsx"
           >
             <FileSpreadsheet className={`size-3.5 text-emerald-600 ${isResettingExcel ? "animate-spin" : ""}`} />
             <span>Re-Sync Excel</span>
@@ -879,7 +869,7 @@ function DashboardEquipmentPage() {
           <Package className="size-10 text-slate-300 mx-auto" />
           <h3 className="text-sm font-bold text-slate-800">No equipment found matching filters</h3>
           <p className="text-xs text-slate-500 max-w-sm mx-auto">
-            Try adjusting your search keywords, clear category selections, or re-sync all 43 items from Excel.
+            Try adjusting your search keywords, clear category selections, or re-sync all 47 items from Excel.
           </p>
           <button
             type="button"

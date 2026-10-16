@@ -28,11 +28,13 @@ export type Booking = {
   totalAmount: number;
   paymentMethod: PaymentMethod;
   paymentScreenshot: string; // Base64 data URL
+  governmentId?: string | undefined; // Base64 data URL
   bookingStatus: BookingStatus;
   paymentStatus: PaymentStatus;
+  operationMode?: "self" | "operator" | undefined;
   createdAt: string; // ISO string
-  reviewedAt?: string;
-  adminNotes?: string;
+  reviewedAt?: string | undefined;
+  adminNotes?: string | undefined;
 };
 
 export type PaymentSettings = {
@@ -411,8 +413,10 @@ export function createBooking(input: {
   customer: CustomerInfo;
   pickupDate: string;
   returnDate: string;
+  operationMode?: "self" | "operator" | undefined;
   paymentMethod: PaymentMethod;
   paymentScreenshot: string;
+  governmentId?: string | undefined;
 }): { success: boolean; booking?: Booking; error?: string } {
   // 1. Verify availability right before final write (prevent double-booking race condition)
   const avail = isRangeAvailable(input.vehicleSlug, input.pickupDate, input.returnDate);
@@ -446,8 +450,10 @@ export function createBooking(input: {
     returnDate: input.returnDate,
     rentalDays: days,
     totalAmount: total,
+    operationMode: input.operationMode || "self",
     paymentMethod: input.paymentMethod,
     paymentScreenshot: input.paymentScreenshot,
+    governmentId: input.governmentId || undefined,
     bookingStatus: "pending", // Initially Pending
     paymentStatus: "verification_pending", // Manual review pending
     createdAt: new Date().toISOString(),
@@ -460,7 +466,22 @@ export function createBooking(input: {
   // Sync to MongoDB database
   if (typeof window !== "undefined") {
     import("./api/bookings.functions").then(({ createBookingDb }) => {
-      createBookingDb({ data: newBooking }).catch(() => {});
+      createBookingDb({ data: newBooking })
+        .then((res: any) => {
+          if (res?.success && res.booking) {
+            // Adopt the stored record (payment proof is now a Cloudinary URL, price is DB-verified)
+            saveBookings(
+              getBookings().map((b) => (b.id === newBooking.id ? { ...b, ...res.booking } : b)),
+            );
+          } else if (res?.conflict) {
+            // Another reservation took these dates first — roll the local copy back
+            saveBookings(getBookings().filter((b) => b.id !== newBooking.id));
+            console.warn("[DB] Booking rejected:", res.error);
+          } else {
+            console.warn("[DB] Booking was not saved to MongoDB:", res?.error);
+          }
+        })
+        .catch((err) => console.warn("[DB] Could not reach MongoDB to save booking:", err));
     });
   }
 

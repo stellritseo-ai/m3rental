@@ -16,7 +16,6 @@ import {
   Wrench,
 } from "lucide-react";
 import { site } from "@/lib/site";
-import { equipment as equipmentData } from "@/data/equipment";
 import { useManagedFleet } from "@/lib/dashboard-store";
 import { submitClientInquiry } from "@/lib/inbox-store";
 
@@ -35,7 +34,7 @@ export function RentalRequestForm({
   defaultEquipment?: string;
 }) {
   const { fleet } = useManagedFleet();
-  const currentEquipment = fleet && fleet.length > 0 ? fleet : equipmentData;
+  const currentEquipment = fleet || [];
   const formId = useId();
   const [form, setForm] = useState({
     name: "",

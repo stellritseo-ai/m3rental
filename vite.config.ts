@@ -14,5 +14,19 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  ...(isVercel ? { nitro: { preset: "vercel" } } : {}),
+  nitro: {
+    ...(isVercel ? { preset: "vercel" } : {}),
+    ...({
+      alias: {
+        "punycode/": "punycode",
+      },
+    } as any),
+  },
+  vite: {
+    resolve: {
+      alias: {
+        "punycode/": "punycode",
+      },
+    },
+  },
 });

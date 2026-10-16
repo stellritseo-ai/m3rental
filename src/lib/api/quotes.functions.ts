@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { connectDB } from "../db";
+import { upsertCustomer } from "../customers.server";
 
 export type QuoteStatus = "new" | "quoted" | "confirmed" | "declined";
 
@@ -22,53 +23,7 @@ export interface RentalQuoteDoc {
   updatedAt?: string | undefined;
 }
 
-const SEED_QUOTES: RentalQuoteDoc[] = [
-  {
-    id: "REQ-20261007-101",
-    customerName: "David Gutierrez",
-    companyName: "Lone Star Excavation LLC",
-    phone: "(713) 555-0143",
-    email: "david@lonestarexcavation.com",
-    equipmentRequested: "Tractor / Backhoe Loader",
-    rentalDuration: "2 Weeks",
-    jobsiteLocation: "Sugar Land, TX (US-59 corridor)",
-    operatorRequired: true,
-    notes: "Trenching for stormwater drainage lines on commercial lot.",
-    status: "new",
-    quotedAmount: 4800,
-    createdAt: "2026-10-07T08:15:00.000Z",
-  },
-  {
-    id: "REQ-20261006-088",
-    customerName: "Rachel Sterling",
-    companyName: "Sterling Events Group",
-    phone: "(832) 555-0921",
-    email: "rachel@sterlingevents.com",
-    equipmentRequested: "Ford E-Series Shuttle Bus",
-    rentalDuration: "3 Days",
-    jobsiteLocation: "Houston Galleria / Memorial Park",
-    operatorRequired: true,
-    notes: "Passenger transport between hotel and venue for corporate conference.",
-    status: "quoted",
-    quotedAmount: 1050,
-    createdAt: "2026-10-06T14:30:00.000Z",
-  },
-  {
-    id: "REQ-20261005-042",
-    customerName: "Hector Morales",
-    companyName: "Morales Roofing & Siding",
-    phone: "(281) 555-8832",
-    email: "hector@moralesroofing.net",
-    equipmentRequested: "2008 Honda Ridgeline Midsize Pickup Truck",
-    rentalDuration: "5 Days",
-    jobsiteLocation: "Katy, TX",
-    operatorRequired: false,
-    notes: "Ladder runs and shingle haul for residential project.",
-    status: "confirmed",
-    quotedAmount: 250,
-    createdAt: "2026-10-05T09:00:00.000Z",
-  },
-];
+const SEED_QUOTES: RentalQuoteDoc[] = [];
 
 // ── 1. Fetch Quotes from Database ─────────────────────────────────────────
 export const getQuotesDb = createServerFn({ method: "POST" })
@@ -81,12 +36,6 @@ export const getQuotesDb = createServerFn({ method: "POST" })
       }
 
       const quotesCol = db.collection<RentalQuoteDoc>("quotes");
-      const count = await quotesCol.countDocuments();
-
-      if (count === 0) {
-        await quotesCol.insertMany(SEED_QUOTES);
-        console.log("[DB] Seeded initial quotes into MongoDB quotes collection");
-      }
 
       const query: Record<string, any> = {};
       if (data?.status && data.status !== "all") {
@@ -161,27 +110,15 @@ export const createQuoteDb = createServerFn({ method: "POST" })
           createdAt: now.toISOString(),
         });
 
-        // Upsert customer
-        await db.collection("customers").updateOne(
-          { email: data.email.toLowerCase().trim() },
-          {
-            $set: {
-              name: data.customerName,
-              company: data.companyName,
-              phone: data.phone,
-              email: data.email.toLowerCase().trim(),
-              lastActive: now.toISOString(),
-            },
-            $inc: { totalQuotes: 1 },
-            $setOnInsert: {
-              createdAt: now.toISOString(),
-              totalBookings: 0,
-              totalSpent: 0,
-              status: "inquiry_only",
-            },
-          },
-          { upsert: true }
-        );
+        // Upsert customer (shared helper → consistent id/firstSeen/lastActive fields)
+        await upsertCustomer(db, {
+          kind: "quote",
+          name: data.customerName,
+          email: data.email,
+          phone: data.phone,
+          company: data.companyName,
+          itemName: data.equipmentRequested,
+        });
 
         console.log(`[DB] Created quote ${quoteId} in MongoDB`);
       }

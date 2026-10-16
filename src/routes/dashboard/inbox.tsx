@@ -125,7 +125,7 @@ function DashboardInboxPage() {
         setMessages(remote);
         try {
           localStorage.setItem("m3_rental_inbox_v1", JSON.stringify(remote));
-        } catch {}
+        } catch { }
         if (!selectedId && remote.length > 0 && remote[0]) {
           setSelectedId(remote[0].id);
         } else if (remote.length === 0) {
@@ -399,22 +399,20 @@ function DashboardInboxPage() {
           <button
             type="button"
             onClick={() => setFilterTag("all")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              filterTag === "all"
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${filterTag === "all"
                 ? "bg-slate-900 text-white shadow-xs"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
+              }`}
           >
             All Submissions ({messages.length})
           </button>
           <button
             type="button"
             onClick={() => setFilterTag("unread")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterTag === "unread"
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${filterTag === "unread"
                 ? "bg-amber-500 text-slate-950 font-black shadow-xs"
                 : "bg-amber-100 text-amber-900 hover:bg-amber-200"
-            }`}
+              }`}
           >
             <Clock className="size-3.5" />
             <span>Unread ({unreadCount})</span>
@@ -422,11 +420,10 @@ function DashboardInboxPage() {
           <button
             type="button"
             onClick={() => setFilterTag("landing")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterTag === "landing"
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${filterTag === "landing"
                 ? "bg-emerald-600 text-white shadow-xs"
                 : "bg-emerald-100 text-emerald-900 hover:bg-emerald-200"
-            }`}
+              }`}
           >
             <Sparkles className="size-3.5" />
             <span>Landing Page Form ({landingCount})</span>
@@ -434,11 +431,10 @@ function DashboardInboxPage() {
           <button
             type="button"
             onClick={() => setFilterTag("contact")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterTag === "contact"
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${filterTag === "contact"
                 ? "bg-purple-600 text-white shadow-xs"
                 : "bg-purple-100 text-purple-900 hover:bg-purple-200"
-            }`}
+              }`}
           >
             <FileText className="size-3.5" />
             <span>Contact Page Form ({contactCount})</span>
@@ -446,11 +442,10 @@ function DashboardInboxPage() {
           <button
             type="button"
             onClick={() => setFilterTag("starred")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterTag === "starred"
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${filterTag === "starred"
                 ? "bg-amber-600 text-white shadow-xs"
                 : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
+              }`}
           >
             <Star className="size-3.5 fill-current" />
             <span>Starred ({starredCount})</span>
@@ -466,9 +461,8 @@ function DashboardInboxPage() {
       {/* ── Main Two-Pane Split Layout ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Pane: Inquiries Feed (col-span-5) */}
-        <div className={`lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-[700px] lg:h-[750px] ${
-          mobileShowDetail ? "hidden lg:flex" : "flex"
-        }`}>
+        <div className={`lg:col-span-5 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-[700px] lg:h-[750px] ${mobileShowDetail ? "hidden lg:flex" : "flex"
+          }`}>
           <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
             <span className="text-xs font-black uppercase tracking-wider text-slate-500">
               Incoming Inquiries Feed
@@ -494,11 +488,10 @@ function DashboardInboxPage() {
                   <div
                     key={m.id}
                     onClick={() => handleSelectMessage(m.id)}
-                    className={`p-4 transition-all cursor-pointer relative group ${
-                      isSelected
+                    className={`p-4 transition-all cursor-pointer relative group ${isSelected
                         ? "bg-blue-50/60 border-l-4 border-l-[#0040DD]"
                         : "hover:bg-slate-50/80 border-l-4 border-l-transparent"
-                    } ${m.unread ? "bg-amber-50/20" : ""}`}
+                      } ${m.unread ? "bg-amber-50/20" : ""}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
@@ -520,11 +513,10 @@ function DashboardInboxPage() {
                         <button
                           type="button"
                           onClick={(e) => handleToggleStar(e, m.id)}
-                          className={`p-1 rounded-md transition-colors cursor-pointer ${
-                            m.starred
+                          className={`p-1 rounded-md transition-colors cursor-pointer ${m.starred
                               ? "text-amber-500 fill-amber-500"
                               : "text-slate-300 hover:text-amber-500"
-                          }`}
+                            }`}
                         >
                           <Star className="size-3.5" fill={m.starred ? "currentColor" : "none"} />
                         </button>
@@ -537,13 +529,12 @@ function DashboardInboxPage() {
                     {/* Tag badge */}
                     <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
-                          m.tag === "Landing Page Form"
+                        className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${m.tag === "Landing Page Form"
                             ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
                             : m.tag === "Contact Page Form"
-                            ? "bg-blue-50 text-[#0040DD] border border-blue-200"
-                            : "bg-purple-50 text-purple-800 border border-purple-200"
-                        }`}
+                              ? "bg-blue-50 text-[#0040DD] border border-blue-200"
+                              : "bg-purple-50 text-purple-800 border border-purple-200"
+                          }`}
                       >
                         {m.tag}
                       </span>
@@ -584,9 +575,8 @@ function DashboardInboxPage() {
         </div>
 
         {/* Right Pane: Inquiry Details & Dispatch Action Center (col-span-7) */}
-        <div className={`lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-[700px] lg:h-[750px] ${
-          mobileShowDetail ? "flex" : "hidden lg:flex"
-        }`}>
+        <div className={`lg:col-span-7 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col h-[700px] lg:h-[750px] ${mobileShowDetail ? "flex" : "hidden lg:flex"
+          }`}>
           {activeMessage ? (
             <>
               {/* Pane Header */}
@@ -604,13 +594,12 @@ function DashboardInboxPage() {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                          activeMessage.tag === "Landing Page Form"
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${activeMessage.tag === "Landing Page Form"
                             ? "bg-emerald-100 text-emerald-900 border border-emerald-300"
                             : activeMessage.tag === "Contact Page Form"
-                            ? "bg-blue-100 text-[#0040DD] border border-blue-300"
-                            : "bg-purple-100 text-purple-900 border border-purple-300"
-                        }`}
+                              ? "bg-blue-100 text-[#0040DD] border border-blue-300"
+                              : "bg-purple-100 text-purple-900 border border-purple-300"
+                          }`}
                       >
                         {activeMessage.tag}
                       </span>
@@ -636,9 +625,8 @@ function DashboardInboxPage() {
                   <button
                     type="button"
                     onClick={(e) => handleToggleStar(e, activeMessage.id)}
-                    className={`p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer ${
-                      activeMessage.starred ? "text-amber-500" : "text-slate-400 hover:text-amber-500"
-                    }`}
+                    className={`p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-colors cursor-pointer ${activeMessage.starred ? "text-amber-500" : "text-slate-400 hover:text-amber-500"
+                      }`}
                     title={activeMessage.starred ? "Unstar" : "Star"}
                   >
                     <Star className="size-4" fill={activeMessage.starred ? "currentColor" : "none"} />
@@ -725,50 +713,50 @@ function DashboardInboxPage() {
                 {(activeMessage.equipmentRequested ||
                   activeMessage.rentalDuration ||
                   activeMessage.jobsiteLocation) && (
-                  <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-200/80">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-[#0040DD] mb-3 flex items-center gap-1.5">
-                      <Truck className="size-3.5" /> Equipment Request Specifications
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {activeMessage.equipmentRequested && (
-                        <div>
-                          <span className="text-slate-500 block text-[11px] font-medium">Machine / Unit</span>
-                          <span className="font-extrabold text-slate-900 block mt-0.5">
-                            {activeMessage.equipmentRequested}
-                          </span>
-                        </div>
-                      )}
+                    <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-200/80">
+                      <h4 className="text-xs font-black uppercase tracking-wider text-[#0040DD] mb-3 flex items-center gap-1.5">
+                        <Truck className="size-3.5" /> Equipment Request Specifications
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        {activeMessage.equipmentRequested && (
+                          <div>
+                            <span className="text-slate-500 block text-[11px] font-medium">Machine / Unit</span>
+                            <span className="font-extrabold text-slate-900 block mt-0.5">
+                              {activeMessage.equipmentRequested}
+                            </span>
+                          </div>
+                        )}
 
-                      {activeMessage.rentalDuration && (
-                        <div>
-                          <span className="text-slate-500 block text-[11px] font-medium">Requested Duration</span>
-                          <span className="font-bold text-slate-900 block mt-0.5">
-                            {activeMessage.rentalDuration}
-                          </span>
-                        </div>
-                      )}
+                        {activeMessage.rentalDuration && (
+                          <div>
+                            <span className="text-slate-500 block text-[11px] font-medium">Requested Duration</span>
+                            <span className="font-bold text-slate-900 block mt-0.5">
+                              {activeMessage.rentalDuration}
+                            </span>
+                          </div>
+                        )}
 
-                      {activeMessage.jobsiteLocation && (
-                        <div className="sm:col-span-2">
-                          <span className="text-slate-500 block text-[11px] font-medium">Jobsite / Pickup Point</span>
-                          <span className="font-semibold text-slate-800 flex items-center gap-1 mt-0.5">
-                            <MapPin className="size-3.5 text-slate-400 shrink-0" />
-                            {activeMessage.jobsiteLocation}
-                          </span>
-                        </div>
-                      )}
+                        {activeMessage.jobsiteLocation && (
+                          <div className="sm:col-span-2">
+                            <span className="text-slate-500 block text-[11px] font-medium">Jobsite / Pickup Point</span>
+                            <span className="font-semibold text-slate-800 flex items-center gap-1 mt-0.5">
+                              <MapPin className="size-3.5 text-slate-400 shrink-0" />
+                              {activeMessage.jobsiteLocation}
+                            </span>
+                          </div>
+                        )}
 
-                      {activeMessage.operatorRequired !== undefined && (
-                        <div>
-                          <span className="text-slate-500 block text-[11px] font-medium">Operator Preference</span>
-                          <span className="font-semibold text-slate-800 block mt-0.5">
-                            {activeMessage.operatorRequired ? "Certified Operator Requested" : "Self-Operated"}
-                          </span>
-                        </div>
-                      )}
+                        {activeMessage.operatorRequired !== undefined && (
+                          <div>
+                            <span className="text-slate-500 block text-[11px] font-medium">Operator Preference</span>
+                            <span className="font-semibold text-slate-800 block mt-0.5">
+                              {activeMessage.operatorRequired ? "Certified Operator Requested" : "Self-Operated"}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Conversation Thread */}
                 <div className="space-y-3">
@@ -779,11 +767,10 @@ function DashboardInboxPage() {
                     {activeMessage.thread.map((t, idx) => (
                       <div
                         key={idx}
-                        className={`p-4 rounded-2xl border text-xs sm:text-sm leading-relaxed ${
-                          t.sender === "client"
+                        className={`p-4 rounded-2xl border text-xs sm:text-sm leading-relaxed ${t.sender === "client"
                             ? "bg-white border-slate-200 text-slate-800"
                             : "bg-blue-600 text-white border-blue-600 ml-6"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center justify-between gap-2 mb-1.5 text-[11px] opacity-80">
                           <span className="font-bold">

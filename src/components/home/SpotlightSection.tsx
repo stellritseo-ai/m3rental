@@ -13,7 +13,7 @@ import {
   Layers,
 } from "lucide-react";
 import { Reveal } from "@/components/site/Reveal";
-import { getEquipment, operatorLabel } from "@/data/equipment";
+import { operatorLabel } from "@/data/equipment";
 import { useManagedFleet } from "@/lib/dashboard-store";
 import { site } from "@/lib/site";
 
@@ -28,9 +28,8 @@ export function SpotlightSection({
   const [selectedSlug, setSelectedSlug] = useState<string>(slug);
   const spotlight =
     fleet.find((i) => i.slug === selectedSlug) ??
-    getEquipment(selectedSlug) ??
     fleet.find((i) => i.slug === slug) ??
-    getEquipment(slug);
+    fleet[0];
 
   if (!spotlight) return null;
 

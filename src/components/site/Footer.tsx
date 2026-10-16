@@ -668,6 +668,7 @@ export function Footer() {
               <p>
                 © 2026 M3 Rental, LLC. All Rights Reserved. Houston Commercial
                 Fleet &amp; Equipment.
+                Design By StellR IT LLC
               </p>
               <span className="hidden sm:inline text-white/20">|</span>
               <p className="text-slate-400">
@@ -675,12 +676,6 @@ export function Footer() {
                 <span className="text-[#FFD54F] font-bold">Houston, TX</span>
               </p>
               <span className="hidden sm:inline text-white/20">|</span>
-              <Link
-                to="/dashboard"
-                className="text-slate-400 hover:text-white transition-colors underline-offset-2 hover:underline flex items-center gap-1"
-              >
-                <ShieldCheck className="size-3 text-[#16A34A]" /> Dashboard
-              </Link>
             </div>
 
             {/* Trust badge & Back to top button */}

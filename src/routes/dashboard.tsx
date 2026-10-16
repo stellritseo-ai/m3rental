@@ -27,6 +27,7 @@ import {
   Radio,
   SlidersHorizontal,
   LogOut,
+  Handshake,
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { getBookings } from "@/lib/booking-store";
@@ -221,6 +222,13 @@ function DashboardLayout() {
           badge: "70+ Units",
           badgeColor: "bg-blue-500/20 text-blue-300 border border-blue-400/30",
         },
+        {
+          label: "Sell & Acquisitions",
+          to: "/dashboard/sell-requests",
+          icon: Handshake,
+          badge: "Seller Deals",
+          badgeColor: "bg-amber-500/20 text-amber-300 border border-amber-400/30",
+        },
       ],
     },
     {
@@ -244,6 +252,13 @@ function DashboardLayout() {
       title: "REPUTATION & COMMS",
       items: [
         {
+          label: "Blog & Articles",
+          to: "/dashboard/blog",
+          icon: FileText,
+          badge: "Editorial",
+          badgeColor: "bg-blue-500/20 text-blue-300 border border-blue-400/30",
+        },
+        {
           label: "Customer Reviews",
           to: "/dashboard/reviews",
           icon: MessageSquare,
@@ -252,6 +267,18 @@ function DashboardLayout() {
           label: "Dispatch Inbox",
           to: "/dashboard/inbox",
           icon: Mail,
+        },
+      ],
+    },
+    {
+      title: "SECURITY & ACCESS",
+      items: [
+        {
+          label: "Profile & Admin Users",
+          to: "/dashboard/profile",
+          icon: ShieldCheck,
+          badge: "Security",
+          badgeColor: "bg-emerald-500/20 text-emerald-300 border border-emerald-400/30",
         },
       ],
     },
@@ -268,11 +295,14 @@ function DashboardLayout() {
     const p = location.pathname;
     if (p === "/dashboard" || p === "/dashboard/") return "Executive Overview";
     if (p.includes("/bookings")) return "Rental Bookings & Verification";
+    if (p.includes("/sell-requests")) return "Equipment Buys & Acquisitions";
     if (p.includes("/equipment")) return "Fleet Catalog & Rates";
     if (p.includes("/customers")) return "Client Directory & Accounts";
     if (p.includes("/payments")) return "Zelle & Cash App Payment Settings";
+    if (p.includes("/blog")) return "Blog & Editorial Management";
     if (p.includes("/reviews")) return "Customer Reviews & Reputation";
     if (p.includes("/inbox")) return "Dispatch Message Inbox";
+    if (p.includes("/profile")) return "Profile & Admin User Management";
     return "Operations Console";
   };
 
@@ -360,13 +390,17 @@ function DashboardLayout() {
         {/* Sidebar Footer & User Profile */}
         <div className="p-4 mt-auto space-y-3 border-t border-white/[0.08] bg-white/[0.02]">
           <div className="p-3 rounded-2xl bg-white/[0.05] border border-white/10 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 overflow-hidden">
+            <Link
+              to="/dashboard/profile"
+              className="flex items-center gap-2.5 overflow-hidden hover:opacity-90 transition-opacity group cursor-pointer"
+              title="Manage Profile & Security Settings"
+            >
               <div className="relative size-9 rounded-xl bg-gradient-to-tr from-[#0040DD] to-[#16A34A] text-white font-black text-xs grid place-items-center shadow-md shrink-0">
                 M3
                 <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-400 border-2 border-[#061220]" />
               </div>
               <div className="text-left overflow-hidden">
-                <div className="text-xs font-black text-white truncate flex items-center gap-1">
+                <div className="text-xs font-black text-white truncate flex items-center gap-1 group-hover:text-blue-300 transition-colors">
                   {adminUser.username}
                   <ShieldCheck className="size-3.5 text-blue-300 shrink-0" />
                 </div>
@@ -374,7 +408,7 @@ function DashboardLayout() {
                   Dispatch Yard Admin
                 </div>
               </div>
-            </div>
+            </Link>
 
             <div className="flex items-center gap-1">
               <a

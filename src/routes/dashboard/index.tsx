@@ -27,6 +27,7 @@ import {
   ArrowUpRight,
   SlidersHorizontal,
   Flame,
+  Handshake,
 } from "lucide-react";
 import {
   AreaChart,
@@ -108,11 +109,10 @@ function DashboardOverviewPage() {
       if (res && res.success && res.data) {
         setDbOverview(res.data);
         setDbConnected(res.data.dbStatus.connected);
-        if (res.data.recentBookings && res.data.recentBookings.length > 0) {
-          setBookings(res.data.recentBookings as unknown as Booking[]);
-        }
-        if (res.data.recentQuotes && res.data.recentQuotes.length > 0) {
-          setQuotes(res.data.recentQuotes as unknown as RentalQuote[]);
+        if (res.data.dbStatus.connected) {
+          setBookings((res.data.recentBookings || []) as unknown as Booking[]);
+          setQuotes((res.data.recentQuotes || []) as unknown as RentalQuote[]);
+          setFleetCount(res.data.totalFleetCount);
         }
       }
     } catch (e) {
@@ -227,6 +227,14 @@ function DashboardOverviewPage() {
           >
             <QrCode className="size-3.5 text-emerald-600" />
             <span>QR Settings</span>
+          </Link>
+
+          <Link
+            to="/dashboard/sell-requests"
+            className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-amber-600/15 hover:from-amber-500/20 hover:to-amber-600/25 border border-amber-400/40 text-amber-900 text-xs font-bold shadow-2xs transition-all cursor-pointer whitespace-nowrap shrink-0"
+          >
+            <Handshake className="size-3.5 text-amber-600" />
+            <span>Sell Inquiries</span>
           </Link>
         </div>
       </div>

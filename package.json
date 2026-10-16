@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "seed:db": "node scripts/seed_equipment.mjs",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

@@ -18,53 +18,7 @@ export interface CustomerReviewDoc {
   adminReply?: string;
 }
 
-const SEED_REVIEWS: CustomerReviewDoc[] = [
-  {
-    id: "rev-1",
-    author: "Carlos Mendoza",
-    company: "Mendoza General Contracting",
-    email: "carlos.m@houstonbuild.com",
-    vehicleSlug: "2008-honda-ridgeline-midsize-pickup",
-    vehicleName: "2008 Honda Ridgeline Midsize Pickup Truck",
-    rating: 5,
-    date: "2026-10-04",
-    title: "Bed trunk is a game changer for tools & Houston weather",
-    comment:
-      "Rented the Ridgeline for a three-day remodel job in Southwest Houston. The lockable in-bed trunk kept all my Milwaukee power tools bone dry during an afternoon downpour. Clean truck, easy contactless pick-up.",
-    status: "published",
-    verifiedRenter: true,
-  },
-  {
-    id: "rev-2",
-    author: "David Gutierrez",
-    company: "Lone Star Excavation",
-    email: "david@lonestarexcavation.com",
-    vehicleSlug: "heavy-equipment-tractor-backhoe-loader",
-    vehicleName: "Tractor / Backhoe Loader",
-    rating: 5,
-    date: "2026-09-28",
-    title: "Heavy hydraulics handled sticky Sugar Land gumbo clay effortlessly",
-    comment:
-      "Delivered on time directly to our jobsite on Highway 6. Machine had full diesel tank, clean grease fittings, and the 24-inch trenching bucket made quick work of our drainage install.",
-    status: "published",
-    verifiedRenter: true,
-  },
-  {
-    id: "rev-3",
-    author: "Rachel Sterling",
-    company: "Sterling Events Group",
-    email: "rachel@sterlingevents.com",
-    vehicleSlug: "ford-e-series-passenger-shuttle-bus",
-    vehicleName: "Ford E-Series Shuttle Bus",
-    rating: 5,
-    date: "2026-09-18",
-    title: "Air conditioning blew icy cold for 14 VIP conference passengers",
-    comment:
-      "Houston humidity in September is brutal, but this shuttle's dual AC kept everyone comfortable between Bush Intercontinental and the hotel. Driver was punctual and very professional.",
-    status: "published",
-    verifiedRenter: true,
-  },
-];
+const SEED_REVIEWS: CustomerReviewDoc[] = [];
 
 // ── 1. Fetch Reviews from Database ────────────────────────────────────────
 export const getReviewsDb = createServerFn({ method: "POST" })
@@ -77,12 +31,6 @@ export const getReviewsDb = createServerFn({ method: "POST" })
       }
 
       const col = db.collection<CustomerReviewDoc>("reviews");
-      const count = await col.countDocuments();
-
-      if (count === 0) {
-        await col.insertMany(SEED_REVIEWS);
-        console.log("[DB] Seeded initial reviews into MongoDB reviews collection");
-      }
 
       const query: Record<string, any> = {};
       if (data?.status && data.status !== "all") {
@@ -102,6 +50,48 @@ export const getReviewsDb = createServerFn({ method: "POST" })
     }
   });
 
+// ── 1b. Create Review ─────────────────────────────────────────────────────
+export const createReviewDb = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      author: z.string().min(1),
+      company: z.string().optional(),
+      email: z.string(),
+      vehicleSlug: z.string(),
+      vehicleName: z.string(),
+      rating: z.number().min(1).max(5),
+      title: z.string().min(1),
+      comment: z.string().min(1),
+      status: z.enum(["published", "pending", "hidden"]).optional(),
+      verifiedRenter: z.boolean().optional(),
+    })
+  )
+  .handler(async ({ data }) => {
+    const review: CustomerReviewDoc = {
+      id: `rev-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
+      author: data.author,
+      email: data.email,
+      vehicleSlug: data.vehicleSlug,
+      vehicleName: data.vehicleName,
+      rating: data.rating,
+      date: new Date().toISOString().slice(0, 10),
+      title: data.title,
+      comment: data.comment,
+      status: data.status ?? "published",
+      verifiedRenter: data.verifiedRenter ?? true,
+      ...(data.company ? { company: data.company } : {}),
+    };
+    try {
+      const db = await connectDB();
+      if (!db) return { success: false, persisted: false, error: "Database unavailable", review };
+      await db.collection("reviews").insertOne({ ...review });
+      return { success: true, persisted: true, review };
+    } catch (err: any) {
+      console.error("[DB] Error creating review:", err);
+      return { success: false, persisted: false, error: err.message as string, review };
+    }
+  });
+
 // ── 2. Update Review Status or Admin Reply ────────────────────────────────
 export const updateReviewDb = createServerFn({ method: "POST" })
   .inputValidator(
@@ -115,17 +105,14 @@ export const updateReviewDb = createServerFn({ method: "POST" })
     const { id, ...updates } = data;
     try {
       const db = await connectDB();
-      if (db) {
-        await db.collection("reviews").updateOne(
-          { id },
-          { $set: updates }
-        );
-        console.log(`[DB] Updated review ${id} in MongoDB`);
-      }
+      if (!db) return { success: false, persisted: false, id, updates, error: "Database unavailable" };
+      const r = await db.collection("reviews").updateOne({ id }, { $set: updates });
+      console.log(`[DB] Updated review ${id} in MongoDB`);
+      return { success: true, persisted: r.matchedCount > 0, id, updates };
     } catch (err: any) {
       console.warn("[DB] Error updating review in MongoDB:", err);
+      return { success: false, persisted: false, id, updates, error: err.message as string };
     }
-    return { success: true, id, updates };
   });
 
 // ── 3. Delete Review ──────────────────────────────────────────────────────
@@ -134,11 +121,10 @@ export const deleteReviewDb = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     try {
       const db = await connectDB();
-      if (db) {
-        await db.collection("reviews").deleteOne({ id: data.id });
-      }
+      if (!db) return { success: false, error: "Database unavailable" };
+      await db.collection("reviews").deleteOne({ id: data.id });
       return { success: true };
     } catch (err: any) {
-      return { success: false, error: err.message };
+      return { success: false, error: err.message as string };
     }
   });

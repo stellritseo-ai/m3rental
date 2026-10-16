@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { connectDB } from "../db";
+import { CLOUDINARY_PROOF_FOLDER, isDataUrl, uploadToCloudinary } from "../cloudinary.server";
+import { upsertCustomer } from "../customers.server";
 
 export type PaymentMethod = "zelle" | "cashapp" | "cash";
 export type BookingStatus = "pending" | "confirmed" | "cancelled";
@@ -27,6 +29,8 @@ export interface BookingDoc {
   totalAmount: number;
   paymentMethod: PaymentMethod;
   paymentScreenshot: string; // Data URL or Image URL
+  governmentId?: string | undefined; // Data URL or Image URL
+  operationMode?: "self" | "operator" | undefined;
   bookingStatus: BookingStatus;
   paymentStatus: PaymentStatus;
   createdAt: string; // ISO string
@@ -145,6 +149,7 @@ export const getBookingsDb = createServerFn({ method: "POST" })
 export const createBookingDb = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
+      id: z.string().regex(/^M3-\d{8}-\d{3}$/).optional(),
       vehicleSlug: z.string(),
       vehicleName: z.string(),
       vehicleImage: z.string(),
@@ -162,87 +167,130 @@ export const createBookingDb = createServerFn({ method: "POST" })
       totalAmount: z.number(),
       paymentMethod: z.enum(["zelle", "cashapp", "cash"]),
       paymentScreenshot: z.string(),
+      governmentId: z.string().optional(),
+      operationMode: z.enum(["self", "operator"]).optional(),
     })
   )
   .handler(async ({ data }) => {
     const now = new Date();
     const datePrefix = now.toISOString().slice(0, 10).replace(/-/g, "");
     const randomSuffix = Math.floor(100 + Math.random() * 900);
-    const bookingId = `M3-${datePrefix}-${randomSuffix}`;
+    // Keep the ID the customer already saw on the confirmation screen
+    const bookingId = data.id || `M3-${datePrefix}-${randomSuffix}`;
 
-    const newBooking: BookingDoc = {
-      id: bookingId,
-      vehicleSlug: data.vehicleSlug,
-      vehicleName: data.vehicleName,
-      vehicleImage: data.vehicleImage,
-      dailyRate: data.dailyRate,
-      customer: {
-        fullName: data.customer.fullName,
-        phone: data.customer.phone,
-        email: data.customer.email,
-        address: data.customer.address,
-        ...(data.customer.notes ? { notes: data.customer.notes } : {}),
-      },
-      pickupDate: data.pickupDate,
-      returnDate: data.returnDate,
-      rentalDays: data.rentalDays,
-      totalAmount: data.totalAmount,
-      paymentMethod: data.paymentMethod,
-      paymentScreenshot: data.paymentScreenshot,
-      bookingStatus: "pending",
-      paymentStatus: "verification_pending",
-      createdAt: now.toISOString(),
-    };
-
-    try {
-      const db = await connectDB();
-      if (db) {
-        const bookingsCol = db.collection<BookingDoc>("bookings");
-        await bookingsCol.insertOne(newBooking);
-
-        // Also create notification
-        await db.collection("notifications").insertOne({
-          id: `notif-${Date.now()}`,
-          title: `New Rental Booking #${bookingId}`,
-          message: `${data.customer.fullName} reserved ${data.vehicleName} for ${data.rentalDays} days ($${data.totalAmount}). Payment verification needed.`,
-          type: "booking",
-          link: "/dashboard/bookings",
-          read: false,
-          createdAt: now.toISOString(),
-        });
-
-        // Upsert customer in customers collection
-        await db.collection("customers").updateOne(
-          { email: data.customer.email.toLowerCase().trim() },
-          {
-            $set: {
-              name: data.customer.fullName,
-              phone: data.customer.phone,
-              email: data.customer.email.toLowerCase().trim(),
-              address: data.customer.address,
-              lastRentalAt: now.toISOString(),
-              status: "active",
-            },
-            $inc: { totalBookings: 1, totalSpent: data.totalAmount },
-            $push: {
-              bookingIds: bookingId,
-              vehicleHistory: data.vehicleName,
-            } as any,
-            $setOnInsert: {
-              createdAt: now.toISOString(),
-              verified: false,
-            },
-          },
-          { upsert: true }
-        );
-
-        console.log(`[DB] Created booking ${bookingId} in MongoDB`);
-      }
-    } catch (err: any) {
-      console.warn("[DB] Could not persist booking directly to MongoDB:", err);
+    const db = await connectDB();
+    if (!db) {
+      return { success: false, persisted: false, error: "Database is not connected." };
     }
 
-    return { success: true, booking: newBooking };
+    try {
+      const bookingsCol = db.collection<BookingDoc>("bookings");
+
+      // Idempotent: retrying the same booking never creates a duplicate
+      const already = await bookingsCol.findOne({ id: bookingId });
+      if (already) {
+        const { _id, ...rest } = already as any;
+        return { success: true, persisted: true, booking: rest as BookingDoc };
+      }
+
+      // Server-side double-booking protection (the browser check can be stale)
+      const conflict = await bookingsCol.findOne({
+        vehicleSlug: data.vehicleSlug,
+        bookingStatus: { $ne: "cancelled" },
+        pickupDate: { $lte: data.returnDate },
+        returnDate: { $gte: data.pickupDate },
+      });
+      if (conflict) {
+        return {
+          success: false,
+          persisted: false,
+          conflict: true,
+          error: `These dates overlap an existing reservation (${conflict.pickupDate} to ${conflict.returnDate}).`,
+        };
+      }
+
+      // Authoritative pricing: use the rate stored in the database, not the browser value
+      const eq = await db.collection("equipment").findOne({ slug: data.vehicleSlug }, { projection: { dayRate: 1 } });
+      const dailyRate = typeof eq?.["dayRate"] === "number" ? (eq["dayRate"] as number) : data.dailyRate;
+      const ms = new Date(data.returnDate).getTime() - new Date(data.pickupDate).getTime();
+      const rentalDays = Math.max(1, Math.round(ms / 86_400_000) || 1);
+      const totalAmount = rentalDays * dailyRate;
+
+      // Payment proof screenshot → Cloudinary (MongoDB stores only the URL)
+      let paymentScreenshot = data.paymentScreenshot;
+      if (isDataUrl(paymentScreenshot)) {
+        try {
+          paymentScreenshot = (await uploadToCloudinary(paymentScreenshot, CLOUDINARY_PROOF_FOLDER)).url;
+        } catch (err) {
+          console.warn("[CLOUDINARY] Payment proof upload failed, keeping inline image:", err);
+        }
+      }
+
+      // Government ID → Cloudinary
+      let governmentId = data.governmentId;
+      if (governmentId && isDataUrl(governmentId)) {
+        try {
+          governmentId = (await uploadToCloudinary(governmentId, CLOUDINARY_PROOF_FOLDER)).url;
+        } catch (err) {
+          console.warn("[CLOUDINARY] Government ID upload failed, keeping inline image:", err);
+        }
+      }
+
+      const newBooking: BookingDoc = {
+        id: bookingId,
+        vehicleSlug: data.vehicleSlug,
+        vehicleName: data.vehicleName,
+        vehicleImage: data.vehicleImage,
+        dailyRate,
+        customer: {
+          fullName: data.customer.fullName,
+          phone: data.customer.phone,
+          email: data.customer.email,
+          address: data.customer.address,
+          ...(data.customer.notes ? { notes: data.customer.notes } : {}),
+        },
+        pickupDate: data.pickupDate,
+        returnDate: data.returnDate,
+        rentalDays,
+        totalAmount,
+        paymentMethod: data.paymentMethod,
+        paymentScreenshot,
+        governmentId: governmentId || undefined,
+        operationMode: data.operationMode || "self",
+        bookingStatus: "pending",
+        paymentStatus: "verification_pending",
+        createdAt: now.toISOString(),
+      };
+
+      await bookingsCol.insertOne(newBooking);
+
+      await db.collection("notifications").insertOne({
+        id: `notif-${Date.now()}-${randomSuffix}`,
+        title: `New Rental Booking #${bookingId}`,
+        message: `${data.customer.fullName} reserved ${data.vehicleName} for ${rentalDays} days ($${totalAmount}) [${data.operationMode === "operator" ? "With Operator" : "Self-Operated"}]. Payment verification needed.`,
+        type: "booking",
+        link: "/dashboard/bookings",
+        read: false,
+        createdAt: now.toISOString(),
+      });
+
+      await upsertCustomer(db, {
+        kind: "booking",
+        name: data.customer.fullName,
+        email: data.customer.email,
+        phone: data.customer.phone,
+        address: data.customer.address,
+        bookingId,
+        itemName: data.vehicleName,
+        amount: totalAmount,
+      });
+
+      console.log(`[DB] Created booking ${bookingId} in MongoDB`);
+      return { success: true, persisted: true, booking: newBooking };
+    } catch (err: any) {
+      console.error("[DB] Could not persist booking to MongoDB:", err);
+      return { success: false, persisted: false, error: err.message as string };
+    }
   });
 
 // ── 3. Update Booking Payment & Status ───────────────────────────────────

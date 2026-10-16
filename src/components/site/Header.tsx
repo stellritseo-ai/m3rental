@@ -24,16 +24,18 @@ import { cn } from "@/lib/utils";
 import { site } from "@/lib/site";
 import { cleanSearch } from "@/lib/search";
 import logoImg from "@/assets/logo.png";
+import { HeaderSearchModal } from "./HeaderSearchModal";
 
 const nav = [
   { label: "Home", to: "/" },
   { label: "About", to: "/about" },
   { label: "Equipment", to: "/equipment", hasDropdown: true },
+  { label: "Sell", to: "/sell" },
   { label: "How It Works", to: "/how-it-works" },
   { label: "Why M3", to: "/why-m3" },
   { label: "Blog", to: "/blog" },
   // { label: "FAQ", to: "/faq" },
-  { label: "Contact", to: "/contact" },
+  // { label: "Contact", to: "/contact" },
 ];
 
 const equipmentCategories = [
@@ -94,8 +96,6 @@ export function Header() {
   const [open, setOpen] = useState(false);
   const [mobileEquipmentOpen, setMobileEquipmentOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
@@ -119,32 +119,17 @@ export function Header() {
   }, [open]);
 
   useEffect(() => {
-    if (!searchOpen) return;
-    const timer = setTimeout(() => {
-      searchInputRef.current?.focus();
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [searchOpen]);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((prev) => !prev);
+      } else if (e.key === "Escape") {
         setSearchOpen(false);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
-
-  const handleSearchSubmit = (e?: React.FormEvent<HTMLFormElement>) => {
-    if (e) e.preventDefault();
-    const trimmed = searchQuery.trim();
-    setSearchOpen(false);
-    navigate({
-      to: "/equipment",
-      search: cleanSearch({ q: trimmed }),
-    });
-  };
 
   return (
     <header
@@ -177,21 +162,13 @@ export function Header() {
 
             <div className="hidden md:flex items-center gap-1.5 border-l border-white/15 pl-3.5 text-[11px] font-semibold text-slate-300">
               <ShieldCheck className="size-3.5 text-[#16A34A]" />
-              <span>Cash • Zelle • Cash App • Stripe Accepted</span>
+              <span>Cash • Zelle • Cash App</span>
             </div>
 
             <div className="hidden xl:flex items-center gap-1.5 border-l border-white/15 pl-3.5 text-[11px] font-semibold text-slate-300">
               <span className="text-[#F59E0B]">★</span>
               <span>70+ Local Rental Options</span>
             </div>
-
-            <Link
-              to="/dashboard"
-              className="hidden lg:flex items-center gap-1 border-l border-white/15 pl-3 text-[11px] font-semibold text-slate-400 hover:text-white transition-colors"
-            >
-              <ShieldCheck className="size-3 text-[#4ADE80]" />
-              <span>Dashboard</span>
-            </Link>
           </div>
 
           {/* Right: Working Hours & Direct Phone */}
@@ -428,7 +405,7 @@ export function Header() {
               search={{}}
               className="btn-base btn-primary btn-sm text-[11px] font-black uppercase tracking-wider px-4 py-2 rounded-full shadow-md hover:shadow-lg transition-all hidden sm:inline-flex"
             >
-              Rent Equipment
+              Contact
             </Link>
 
             {/* Mobile Fast Call Pill */}
@@ -457,80 +434,6 @@ export function Header() {
         </div>
       </div>
 
-      {/* ── EXPANDABLE SEARCH BAR DRAWER ── */}
-      <div
-        className={cn(
-          "overflow-hidden transition-all duration-300 bg-white border-t border-slate-200/90",
-          scrolled ? "rounded-none" : "rounded-b-[10px]",
-          searchOpen
-            ? "max-h-72 opacity-100 py-3.5 sm:py-4 px-3 sm:px-6 shadow-xl"
-            : "max-h-0 opacity-0 py-0 px-3 sm:px-6 border-transparent pointer-events-none",
-        )}
-      >
-        <div className="w-full max-w-4xl mx-auto">
-          <form
-            onSubmit={handleSearchSubmit}
-            className="relative flex items-center gap-2 sm:gap-3"
-          >
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4.5 text-[#0040DD] pointer-events-none" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search 70+ equipment, work trucks, trailers, excavators..."
-                className="w-full rounded-full border border-slate-200 bg-slate-50/90 pl-11 pr-10 py-2.5 sm:py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:bg-white focus:border-[#0040DD] focus:outline-none focus:ring-4 focus:ring-[#0040DD]/10 transition-all shadow-inner"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 size-6 rounded-full bg-slate-200/80 hover:bg-slate-300 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
-                  aria-label="Clear search input"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#0040DD] to-[#16A34A] hover:from-[#16A34A] hover:to-[#0040DD] text-white px-5 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-black uppercase tracking-wider transition-all duration-200 shadow-md hover:shadow-lg shrink-0 cursor-pointer active:scale-95"
-            >
-              <span>Search</span>
-              <ArrowRight className="size-3.5 sm:size-4" />
-            </button>
-          </form>
-
-          {/* Quick search suggestion tags */}
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
-            <span className="font-black text-slate-400 uppercase tracking-widest text-[10px] mr-1 hidden sm:inline">
-              Popular:
-            </span>
-            {[
-              { label: "Work Trucks", to: "/equipment?category=pickup-trucks" },
-              { label: "Dump Trailers", to: "/equipment?category=trailers" },
-              {
-                label: "Heavy Construction",
-                to: "/equipment?category=construction-equipment",
-              },
-              { label: "Passenger Vans", to: "/equipment?category=vans" },
-              { label: "With Operator", to: "/equipment?operator=with" },
-            ].map((pill) => (
-              <Link
-                key={pill.label}
-                to={pill.to}
-                onClick={() => setSearchOpen(false)}
-                className="rounded-full bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-[#0040DD] border border-slate-200/80 hover:border-blue-200 px-3 py-1 font-bold transition-all duration-150 cursor-pointer"
-              >
-                {pill.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-
       {/* ── MOBILE MENU DRAWER ── */}
       <div
         className={cn(
@@ -540,6 +443,22 @@ export function Header() {
         )}
       >
         <div className="w-full max-w-[94rem] mx-auto flex flex-col py-5 px-3 sm:px-4 space-y-2 text-left">
+          {/* Quick Search Button in Mobile Menu */}
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              setSearchOpen(true);
+            }}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-50 hover:bg-blue-50/60 border border-slate-200/90 text-left text-slate-600 text-xs font-semibold mb-2 transition-colors cursor-pointer shadow-2xs"
+          >
+            <Search className="size-4 text-[#0040DD]" />
+            <span className="flex-1 text-slate-700 font-bold">Search equipment, trucks, guides...</span>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-[10px] font-black text-slate-400">
+              ⌘K
+            </span>
+          </button>
+
           {nav.map((item) => {
             const active = pathname === item.to;
 
@@ -635,6 +554,9 @@ export function Header() {
           </div>
         </div>
       </div>
+
+      {/* ── DYNAMIC SPOTLIGHT SEARCH MODAL ── */}
+      <HeaderSearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 }

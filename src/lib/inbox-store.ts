@@ -142,6 +142,7 @@ export function submitClientInquiry(input: {
     import("./api/inbox.functions").then(({ createMessageDb }) => {
       createMessageDb({
         data: {
+          id: newMsg.id,
           senderName: input.senderName,
           senderEmail: input.senderEmail || "inquiry@m3rental.com",
           senderPhone: input.senderPhone,

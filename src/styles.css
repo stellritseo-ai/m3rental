@@ -541,3 +541,23 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ==========================================================================
+   Luxury Pixel-Perfect Cart Toast Styles
+   ========================================================================== */
+[data-sonner-toaster] {
+  --width: 410px !important;
+  font-family: var(--font-body), system-ui, sans-serif !important;
+}
+
+[data-sonner-toast] {
+  overflow: visible !important;
+}
+
+[data-sonner-toast][data-styled="false"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+

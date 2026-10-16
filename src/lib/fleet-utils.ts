@@ -22,8 +22,8 @@ export const KNOWN_DUPLICATE_SLUG_PAIRS: [string, string][] = [
 ];
 
 export function areItemsDuplicate(
-  a: { slug: string; name: string; id?: string | undefined },
-  b: { slug: string; name: string; id?: string | undefined }
+  a: { slug: string; name: string; id?: string | null | undefined },
+  b: { slug: string; name: string; id?: string | null | undefined }
 ): boolean {
   // If both have distinct M3- IDs, they are distinct products from the official Excel catalog
   if (a.id && b.id && a.id.startsWith("M3-") && b.id.startsWith("M3-")) {
@@ -53,7 +53,7 @@ export function areItemsDuplicate(
 }
 
 export function deduplicateFleet<
-  T extends { slug: string; name: string; id?: string | undefined; image?: string | undefined }
+  T extends { slug: string; name: string; id?: string | null | undefined; image?: string | null | undefined }
 >(
   items: T[]
 ): { kept: T[]; removedSlugs: string[] } {

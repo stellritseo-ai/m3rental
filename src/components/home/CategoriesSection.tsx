@@ -11,14 +11,14 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import { categories, type Equipment } from "@/data/equipment";
 import { Reveal } from "@/components/site/Reveal";
-import { categories, equipment as defaultEquipment } from "@/data/equipment";
 import { useManagedFleet } from "@/lib/dashboard-store";
 import { cn } from "@/lib/utils";
 
-export function CategoriesSection() {
-  const { fleet } = useManagedFleet();
-  const currentFleet = fleet && fleet.length > 0 ? fleet : defaultEquipment;
+export function CategoriesSection({ initialFleet }: { initialFleet?: Equipment[] } = {}) {
+  const { fleet: hookFleet } = useManagedFleet();
+  const currentFleet = hookFleet && hookFleet.length > 0 ? hookFleet : (initialFleet || []);
 
   const categoryConfig: Record<
     string,

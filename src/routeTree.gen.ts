@@ -16,16 +16,22 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FaqRouteImport } from './routes/faq'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
+import { Route as SellRouteImport } from './routes/sell'
 import { Route as WhyM3RouteImport } from './routes/why-m3'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminBookingsRouteImport } from './routes/admin/bookings'
+import { Route as BlogIndexRouteImport } from './routes/blog/index'
+import { Route as BlogSlugRouteImport } from './routes/blog/$slug'
 import { Route as DashboardIndexRouteImport } from './routes/dashboard/index'
+import { Route as DashboardBlogRouteImport } from './routes/dashboard/blog'
 import { Route as DashboardBookingsRouteImport } from './routes/dashboard/bookings'
 import { Route as DashboardCustomersRouteImport } from './routes/dashboard/customers'
 import { Route as DashboardEquipmentRouteImport } from './routes/dashboard/equipment'
 import { Route as DashboardInboxRouteImport } from './routes/dashboard/inbox'
 import { Route as DashboardPaymentsRouteImport } from './routes/dashboard/payments'
+import { Route as DashboardProfileRouteImport } from './routes/dashboard/profile'
 import { Route as DashboardReviewsRouteImport } from './routes/dashboard/reviews'
+import { Route as DashboardSellRequestsRouteImport } from './routes/dashboard/sell-requests'
 import { Route as EquipmentIndexRouteImport } from './routes/equipment/index'
 import { Route as EquipmentSlugRouteImport } from './routes/equipment/$slug'
 
@@ -64,6 +70,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
   path: '/how-it-works',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SellRoute = SellRouteImport.update({
+  id: '/sell',
+  path: '/sell',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WhyM3Route = WhyM3RouteImport.update({
   id: '/why-m3',
   path: '/why-m3',
@@ -79,9 +90,24 @@ const AdminBookingsRoute = AdminBookingsRouteImport.update({
   path: '/admin/bookings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/blog/',
+  path: '/blog/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/blog/$slug',
+  path: '/blog/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DashboardIndexRoute = DashboardIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardBlogRoute = DashboardBlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardBookingsRoute = DashboardBookingsRouteImport.update({
@@ -109,9 +135,19 @@ const DashboardPaymentsRoute = DashboardPaymentsRouteImport.update({
   path: '/payments',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardProfileRoute = DashboardProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardReviewsRoute = DashboardReviewsRouteImport.update({
   id: '/reviews',
   path: '/reviews',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSellRequestsRoute = DashboardSellRequestsRouteImport.update({
+  id: '/sell-requests',
+  path: '/sell-requests',
   getParentRoute: () => DashboardRoute,
 } as any)
 const EquipmentIndexRoute = EquipmentIndexRouteImport.update({
@@ -133,16 +169,22 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/sell': typeof SellRoute
   '/why-m3': typeof WhyM3Route
   '/admin/bookings': typeof AdminBookingsRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/dashboard/blog': typeof DashboardBlogRoute
   '/dashboard/bookings': typeof DashboardBookingsRoute
   '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/equipment': typeof DashboardEquipmentRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/reviews': typeof DashboardReviewsRoute
+  '/dashboard/sell-requests': typeof DashboardSellRequestsRoute
   '/equipment/$slug': typeof EquipmentSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/equipment/': typeof EquipmentIndexRoute
 }
@@ -153,16 +195,22 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/faq': typeof FaqRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/sell': typeof SellRoute
   '/why-m3': typeof WhyM3Route
   '/admin/bookings': typeof AdminBookingsRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/dashboard/blog': typeof DashboardBlogRoute
   '/dashboard/bookings': typeof DashboardBookingsRoute
   '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/equipment': typeof DashboardEquipmentRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/reviews': typeof DashboardReviewsRoute
+  '/dashboard/sell-requests': typeof DashboardSellRequestsRoute
   '/equipment/$slug': typeof EquipmentSlugRoute
   '/admin': typeof AdminIndexRoute
+  '/blog': typeof BlogIndexRoute
   '/dashboard': typeof DashboardIndexRoute
   '/equipment': typeof EquipmentIndexRoute
 }
@@ -175,16 +223,22 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRouteWithChildren
   '/faq': typeof FaqRoute
   '/how-it-works': typeof HowItWorksRoute
+  '/sell': typeof SellRoute
   '/why-m3': typeof WhyM3Route
   '/admin/bookings': typeof AdminBookingsRoute
+  '/blog/$slug': typeof BlogSlugRoute
+  '/dashboard/blog': typeof DashboardBlogRoute
   '/dashboard/bookings': typeof DashboardBookingsRoute
   '/dashboard/customers': typeof DashboardCustomersRoute
   '/dashboard/equipment': typeof DashboardEquipmentRoute
   '/dashboard/inbox': typeof DashboardInboxRoute
   '/dashboard/payments': typeof DashboardPaymentsRoute
+  '/dashboard/profile': typeof DashboardProfileRoute
   '/dashboard/reviews': typeof DashboardReviewsRoute
+  '/dashboard/sell-requests': typeof DashboardSellRequestsRoute
   '/equipment/$slug': typeof EquipmentSlugRoute
   '/admin/': typeof AdminIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/dashboard/': typeof DashboardIndexRoute
   '/equipment/': typeof EquipmentIndexRoute
 }
@@ -198,16 +252,22 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/faq'
     | '/how-it-works'
+    | '/sell'
     | '/why-m3'
     | '/admin/bookings'
+    | '/blog/$slug'
+    | '/dashboard/blog'
     | '/dashboard/bookings'
     | '/dashboard/customers'
     | '/dashboard/equipment'
     | '/dashboard/inbox'
     | '/dashboard/payments'
+    | '/dashboard/profile'
     | '/dashboard/reviews'
+    | '/dashboard/sell-requests'
     | '/equipment/$slug'
     | '/admin/'
+    | '/blog/'
     | '/dashboard/'
     | '/equipment/'
   fileRoutesByTo: FileRoutesByTo
@@ -218,16 +278,22 @@ export interface FileRouteTypes {
     | '/contact'
     | '/faq'
     | '/how-it-works'
+    | '/sell'
     | '/why-m3'
     | '/admin/bookings'
+    | '/blog/$slug'
+    | '/dashboard/blog'
     | '/dashboard/bookings'
     | '/dashboard/customers'
     | '/dashboard/equipment'
     | '/dashboard/inbox'
     | '/dashboard/payments'
+    | '/dashboard/profile'
     | '/dashboard/reviews'
+    | '/dashboard/sell-requests'
     | '/equipment/$slug'
     | '/admin'
+    | '/blog'
     | '/dashboard'
     | '/equipment'
   id:
@@ -239,16 +305,22 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/faq'
     | '/how-it-works'
+    | '/sell'
     | '/why-m3'
     | '/admin/bookings'
+    | '/blog/$slug'
+    | '/dashboard/blog'
     | '/dashboard/bookings'
     | '/dashboard/customers'
     | '/dashboard/equipment'
     | '/dashboard/inbox'
     | '/dashboard/payments'
+    | '/dashboard/profile'
     | '/dashboard/reviews'
+    | '/dashboard/sell-requests'
     | '/equipment/$slug'
     | '/admin/'
+    | '/blog/'
     | '/dashboard/'
     | '/equipment/'
   fileRoutesById: FileRoutesById
@@ -261,10 +333,13 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRouteWithChildren
   FaqRoute: typeof FaqRoute
   HowItWorksRoute: typeof HowItWorksRoute
+  SellRoute: typeof SellRoute
   WhyM3Route: typeof WhyM3Route
   AdminBookingsRoute: typeof AdminBookingsRoute
+  BlogSlugRoute: typeof BlogSlugRoute
   EquipmentSlugRoute: typeof EquipmentSlugRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  BlogIndexRoute: typeof BlogIndexRoute
   EquipmentIndexRoute: typeof EquipmentIndexRoute
 }
 
@@ -319,6 +394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HowItWorksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sell': {
+      id: '/sell'
+      path: '/sell'
+      fullPath: '/sell'
+      preLoaderRoute: typeof SellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/why-m3': {
       id: '/why-m3'
       path: '/why-m3'
@@ -340,11 +422,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminBookingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog/': {
+      id: '/blog/'
+      path: '/blog'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/blog/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard/': {
       id: '/dashboard/'
       path: '/'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof DashboardIndexRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/blog': {
+      id: '/dashboard/blog'
+      path: '/blog'
+      fullPath: '/dashboard/blog'
+      preLoaderRoute: typeof DashboardBlogRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/dashboard/bookings': {
@@ -382,11 +485,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPaymentsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/dashboard/profile': {
+      id: '/dashboard/profile'
+      path: '/profile'
+      fullPath: '/dashboard/profile'
+      preLoaderRoute: typeof DashboardProfileRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/dashboard/reviews': {
       id: '/dashboard/reviews'
       path: '/reviews'
       fullPath: '/dashboard/reviews'
       preLoaderRoute: typeof DashboardReviewsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/dashboard/sell-requests': {
+      id: '/dashboard/sell-requests'
+      path: '/sell-requests'
+      fullPath: '/dashboard/sell-requests'
+      preLoaderRoute: typeof DashboardSellRequestsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/equipment/': {
@@ -407,22 +524,28 @@ declare module '@tanstack/react-router' {
 }
 
 interface DashboardRouteChildren {
+  DashboardBlogRoute: typeof DashboardBlogRoute
   DashboardBookingsRoute: typeof DashboardBookingsRoute
   DashboardCustomersRoute: typeof DashboardCustomersRoute
   DashboardEquipmentRoute: typeof DashboardEquipmentRoute
   DashboardInboxRoute: typeof DashboardInboxRoute
   DashboardPaymentsRoute: typeof DashboardPaymentsRoute
+  DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardReviewsRoute: typeof DashboardReviewsRoute
+  DashboardSellRequestsRoute: typeof DashboardSellRequestsRoute
   DashboardIndexRoute: typeof DashboardIndexRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardBlogRoute: DashboardBlogRoute,
   DashboardBookingsRoute: DashboardBookingsRoute,
   DashboardCustomersRoute: DashboardCustomersRoute,
   DashboardEquipmentRoute: DashboardEquipmentRoute,
   DashboardInboxRoute: DashboardInboxRoute,
   DashboardPaymentsRoute: DashboardPaymentsRoute,
+  DashboardProfileRoute: DashboardProfileRoute,
   DashboardReviewsRoute: DashboardReviewsRoute,
+  DashboardSellRequestsRoute: DashboardSellRequestsRoute,
   DashboardIndexRoute: DashboardIndexRoute,
 }
 
@@ -438,10 +561,13 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRouteWithChildren,
   FaqRoute: FaqRoute,
   HowItWorksRoute: HowItWorksRoute,
+  SellRoute: SellRoute,
   WhyM3Route: WhyM3Route,
   AdminBookingsRoute: AdminBookingsRoute,
+  BlogSlugRoute: BlogSlugRoute,
   EquipmentSlugRoute: EquipmentSlugRoute,
   AdminIndexRoute: AdminIndexRoute,
+  BlogIndexRoute: BlogIndexRoute,
   EquipmentIndexRoute: EquipmentIndexRoute,
 }
 export const routeTree = rootRouteImport

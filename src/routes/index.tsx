@@ -19,7 +19,18 @@ import {
   LocationSection,
 } from "@/components/home";
 
+import type { Equipment } from "@/data/equipment";
+
 export const Route = createFileRoute("/")({
+  loader: async () => {
+    try {
+      const { getEquipmentDb } = await import("@/lib/api/equipment.functions");
+      const res = await getEquipmentDb();
+      return { fleet: (res?.equipment || []) as Equipment[] };
+    } catch {
+      return { fleet: [] as Equipment[] };
+    }
+  },
   head: () => ({
     meta: [
       { title: "M3 Rental | Equipment & Vehicle Rentals in Houston, TX" },
@@ -45,15 +56,17 @@ export const Route = createFileRoute("/")({
 });
 
 function HomePage() {
+  const { fleet } = Route.useLoaderData();
+
   return (
     <SiteLayout>
       <HeroSection />
       <AboutSection />
       {/* <HeroStatsSection /> */}
       {/* <QuickSearchSection /> */}
-      <FeaturedSection />
+      <FeaturedSection initialFleet={fleet} />
       {/* <SpotlightSection /> */}
-      <CategoriesSection />
+      <CategoriesSection initialFleet={fleet} />
       {/* <OperatorSection /> */}
       <WhyM3Section />
       {/* <PaymentsSection /> */}

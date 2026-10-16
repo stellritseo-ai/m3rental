@@ -38,7 +38,9 @@ import {
   getBookingsDb,
   updateBookingStatusDb,
 } from "@/lib/api/bookings.functions";
-import { equipment, Equipment } from "@/data/equipment";
+import { type Equipment } from "@/data/equipment";
+import { useManagedFleet } from "@/lib/dashboard-store";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard/bookings")({
   head: () => ({
@@ -96,6 +98,7 @@ function formatDateTime(isoStr: string): string {
 }
 
 function DashboardBookingsPage() {
+  const { fleet: fleetList } = useManagedFleet();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | BookingStatus | "pending_verification">("all");
@@ -568,7 +571,7 @@ function DashboardBookingsPage() {
               className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-700 focus:border-[#0040DD] focus:outline-hidden cursor-pointer"
             >
               <option value="all">All Vehicles &amp; Fleet</option>
-              {equipment.map((eq: Equipment) => (
+              {fleetList.map((eq) => (
                 <option key={eq.slug} value={eq.slug}>
                   {eq.name} (${eq.dayRate}/day)
                 </option>
@@ -708,9 +711,21 @@ function DashboardBookingsPage() {
                             >
                               {b.vehicleName}
                             </Link>
-                            <span className="text-[11px] font-semibold text-slate-500">
-                              ${b.dailyRate}/day
-                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[11px] font-semibold text-slate-500">
+                                ${b.dailyRate}/day
+                              </span>
+                              {b.operationMode && (
+                                <span className={cn(
+                                  "px-1.5 py-0.2 rounded text-[9.5px] font-black uppercase tracking-wider",
+                                  b.operationMode === "operator"
+                                    ? "bg-purple-100 text-purple-700 border border-purple-200"
+                                    : "bg-blue-100 text-[#0040DD] border border-blue-200"
+                                )}>
+                                  {b.operationMode === "operator" ? "Operator" : "Self"}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -792,25 +807,49 @@ function DashboardBookingsPage() {
                           <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                             Cash Pickup
                           </span>
-                        ) : b.paymentScreenshot ? (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedBooking(b);
-                            }}
-                            className="group/thumb relative inline-block rounded-lg border border-slate-200 overflow-hidden size-11 bg-slate-100 shadow-2xs hover:border-[#0040DD] transition-all cursor-pointer"
-                            title="Click to view full screenshot"
-                          >
-                            <img
-                              src={b.paymentScreenshot}
-                              alt="Payment proof"
-                              className="size-full object-cover group-hover/thumb:scale-110 transition-transform"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity text-white">
-                              <Eye className="size-3.5" />
-                            </div>
-                          </button>
+                        ) : (b.paymentScreenshot || b.governmentId) ? (
+                          <div className="flex items-center justify-center gap-1.5">
+                            {b.paymentScreenshot && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedBooking(b);
+                                }}
+                                className="group/thumb relative inline-block rounded-lg border border-slate-200 overflow-hidden size-10 bg-slate-100 shadow-2xs hover:border-[#0040DD] transition-all cursor-pointer"
+                                title="Click to view payment screenshot"
+                              >
+                                <img
+                                  src={b.paymentScreenshot}
+                                  alt="Payment proof"
+                                  className="size-full object-cover group-hover/thumb:scale-110 transition-transform"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                  <Eye className="size-3" />
+                                </div>
+                              </button>
+                            )}
+                            {b.governmentId && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedBooking(b);
+                                }}
+                                className="group/id relative inline-block rounded-lg border border-emerald-200 overflow-hidden size-10 bg-emerald-50 shadow-2xs hover:border-[#16A34A] transition-all cursor-pointer"
+                                title="Click to view Government ID"
+                              >
+                                <img
+                                  src={b.governmentId}
+                                  alt="Government ID"
+                                  className="size-full object-cover group-hover/id:scale-110 transition-transform"
+                                />
+                                <div className="absolute inset-0 bg-emerald-950/40 opacity-0 group-hover/id:opacity-100 flex items-center justify-center transition-opacity text-white">
+                                  <User className="size-3 text-white" />
+                                </div>
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-400 text-xs italic">No receipt</span>
                         )}
@@ -941,10 +980,22 @@ function DashboardBookingsPage() {
                   <h4 className="font-display font-black text-slate-900 text-lg">
                     {selectedBooking.vehicleName}
                   </h4>
-                  <p className="text-xs text-slate-500 mt-0.5 font-medium">
-                    Daily Rate: ${selectedBooking.dailyRate}/day • Duration: {selectedBooking.rentalDays} Day
-                    {selectedBooking.rentalDays > 1 ? "s" : ""}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    <span className="text-xs text-slate-500 font-medium">
+                      Daily Rate: ${selectedBooking.dailyRate}/day • Duration: {selectedBooking.rentalDays} Day
+                      {selectedBooking.rentalDays > 1 ? "s" : ""}
+                    </span>
+                    {selectedBooking.operationMode && (
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
+                        selectedBooking.operationMode === "operator"
+                          ? "bg-purple-100 text-purple-700 border border-purple-200"
+                          : "bg-blue-100 text-[#0040DD] border border-blue-200"
+                      )}>
+                        {selectedBooking.operationMode === "operator" ? "With Operator" : "Self-Operated"}
+                      </span>
+                    )}
+                  </div>
                   <div className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1 text-xs font-bold text-[#0040DD] border border-blue-200">
                     <Calendar className="size-3.5" />
                     <span>
@@ -1019,45 +1070,84 @@ function DashboardBookingsPage() {
                 )}
               </div>
 
-              {/* Payment Proof / Instructions */}
-              <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                    <ImageIcon className="size-4 text-[#16A34A]" /> Payment Proof &amp; Verification
-                  </h4>
-                  {selectedBooking.paymentScreenshot && selectedBooking.paymentMethod !== "cash" && (
-                    <a
-                      href={selectedBooking.paymentScreenshot}
-                      download={`receipt-${selectedBooking.id}.png`}
-                      className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0040DD] hover:underline"
-                    >
-                      <Download className="size-3" /> Download Receipt
-                    </a>
+              {/* Payment Proof & Government ID Verification Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Payment Screenshot */}
+                <div className="rounded-2xl border border-slate-200 p-4 space-y-3 bg-white">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <ImageIcon className="size-4 text-[#0040DD]" /> Payment Proof
+                    </h4>
+                    {selectedBooking.paymentScreenshot && selectedBooking.paymentMethod !== "cash" && (
+                      <a
+                        href={selectedBooking.paymentScreenshot}
+                        download={`receipt-${selectedBooking.id}.png`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#0040DD] hover:underline"
+                      >
+                        <Download className="size-3" /> Download Receipt
+                      </a>
+                    )}
+                  </div>
+
+                  {selectedBooking.paymentMethod === "cash" ? (
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                      <div className="font-bold text-amber-950 flex items-center gap-1.5">
+                        <DollarSign className="size-4" /> In-Person Cash Payment on Vehicle Release
+                      </div>
+                      <p className="mt-1 text-amber-800">
+                        The customer opted to pay in cash upon vehicle pickup at our Houston Yard. Verify full payment (${selectedBooking.totalAmount}.00) and issue physical receipt prior to vehicle handoff.
+                      </p>
+                    </div>
+                  ) : selectedBooking.paymentScreenshot ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-950 p-2 flex items-center justify-center max-h-[300px] overflow-hidden">
+                      <img
+                        src={selectedBooking.paymentScreenshot}
+                        alt="Customer payment screenshot"
+                        className="max-h-[280px] w-auto object-contain rounded-lg shadow-md"
+                      />
+                    </div>
+                  ) : (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500">
+                      No payment screenshot attached.
+                    </div>
                   )}
                 </div>
 
-                {selectedBooking.paymentMethod === "cash" ? (
-                  <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                    <div className="font-bold text-amber-950 flex items-center gap-1.5">
-                      <DollarSign className="size-4" /> In-Person Cash Payment on Vehicle Release
+                {/* 2. Government ID */}
+                <div className="rounded-2xl border border-slate-200 p-4 space-y-3 bg-white">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <User className="size-4 text-[#16A34A]" /> Government ID (Driver's License / ID)
+                    </h4>
+                    {selectedBooking.governmentId && (
+                      <a
+                        href={selectedBooking.governmentId}
+                        download={`govid-${selectedBooking.id}.png`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-[#16A34A] hover:underline"
+                      >
+                        <Download className="size-3" /> Download ID
+                      </a>
+                    )}
+                  </div>
+
+                  {selectedBooking.governmentId ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-950 p-2 flex items-center justify-center max-h-[300px] overflow-hidden">
+                      <img
+                        src={selectedBooking.governmentId}
+                        alt="Customer Government ID"
+                        className="max-h-[280px] w-auto object-contain rounded-lg shadow-md"
+                      />
                     </div>
-                    <p className="mt-1 text-amber-800">
-                      The customer opted to pay in cash upon vehicle pickup at our Houston Yard. Verify full payment (${selectedBooking.totalAmount}.00) and issue physical receipt prior to vehicle handoff.
-                    </p>
-                  </div>
-                ) : selectedBooking.paymentScreenshot ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-950 p-3 flex items-center justify-center max-h-[380px] overflow-hidden">
-                    <img
-                      src={selectedBooking.paymentScreenshot}
-                      alt="Customer payment screenshot"
-                      className="max-h-[350px] w-auto object-contain rounded-lg shadow-md"
-                    />
-                  </div>
-                ) : (
-                  <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500">
-                    No payment screenshot attached.
-                  </div>
-                )}
+                  ) : (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500">
+                      No government ID attached.
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Admin Status Controls */}

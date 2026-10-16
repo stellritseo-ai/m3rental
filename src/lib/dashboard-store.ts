@@ -8,7 +8,7 @@ import { equipment, Equipment } from "@/data/equipment";
 import { getBookings, Booking } from "@/lib/booking-store";
 import { deduplicateFleet } from "./fleet-utils";
 
-export const STORAGE_KEY_MANAGED_FLEET = "m3_rental_managed_fleet_v5";
+export const STORAGE_KEY_MANAGED_FLEET = "m3_rental_managed_fleet_v6";
 
 // Auto-purge any stale legacy browser caches from previous versions
 if (typeof window !== "undefined") {
@@ -17,6 +17,8 @@ if (typeof window !== "undefined") {
     localStorage.removeItem("m3_rental_managed_fleet_v2");
     localStorage.removeItem("m3_rental_managed_fleet_v3");
     localStorage.removeItem("m3_rental_managed_fleet_v4");
+    localStorage.removeItem("m3_rental_managed_fleet_v5");
+    localStorage.removeItem("m3_rental_fleet_overrides_v1");
   } catch {}
 }
 
@@ -49,11 +51,11 @@ export type DashboardNotification = {
 };
 
 export type FleetOverride = {
-  id?: string | undefined;
+  id?: string | null | undefined;
   slug: string;
   dayRate?: number | undefined;
-  monthRate?: number | undefined;
-  pricingUnit?: string | undefined;
+  monthRate?: number | null | undefined;
+  pricingUnit?: string | null | undefined;
   status?: ("available" | "booked" | "maintenance") | undefined;
   featured?: boolean | undefined;
 };
@@ -62,88 +64,15 @@ const STORAGE_KEY_QUOTES = "m3_rental_quotes_v1";
 const STORAGE_KEY_NOTIFS = "m3_rental_notifications_v1";
 const STORAGE_KEY_FLEET_OVERRIDES = "m3_rental_fleet_overrides_v1";
 
-const SEED_QUOTES: RentalQuote[] = [
-  {
-    id: "REQ-20261007-101",
-    customerName: "David Gutierrez",
-    companyName: "Lone Star Excavation LLC",
-    phone: "(713) 555-0143",
-    email: "david@lonestarexcavation.com",
-    equipmentRequested: "Tractor / Backhoe Loader",
-    rentalDuration: "2 Weeks",
-    jobsiteLocation: "Sugar Land, TX (US-59 corridor)",
-    operatorRequired: true,
-    notes: "Trenching for stormwater drainage lines on commercial lot.",
-    status: "new",
-    quotedAmount: 4800,
-    createdAt: "2026-10-07T08:15:00.000Z",
-  },
-  {
-    id: "REQ-20261006-088",
-    customerName: "Rachel Sterling",
-    companyName: "Sterling Events Group",
-    phone: "(832) 555-0921",
-    email: "rachel@sterlingevents.com",
-    equipmentRequested: "Ford E-Series Shuttle Bus",
-    rentalDuration: "3 Days",
-    jobsiteLocation: "Houston Galleria / Memorial Park",
-    operatorRequired: true,
-    notes: "Passenger transport between hotel and venue for corporate conference.",
-    status: "quoted",
-    quotedAmount: 1050,
-    createdAt: "2026-10-06T14:30:00.000Z",
-  },
-  {
-    id: "REQ-20261005-042",
-    customerName: "Hector Morales",
-    companyName: "Morales Roofing & Siding",
-    phone: "(281) 555-8832",
-    email: "hector@moralesroofing.net",
-    equipmentRequested: "2008 Honda Ridgeline Midsize Pickup Truck",
-    rentalDuration: "5 Days",
-    jobsiteLocation: "Katy, TX",
-    operatorRequired: false,
-    notes: "Ladder runs and shingle haul for residential project.",
-    status: "confirmed",
-    quotedAmount: 250,
-    createdAt: "2026-10-05T09:00:00.000Z",
-  },
-];
+const SEED_QUOTES: RentalQuote[] = [];
 
-const SEED_NOTIFS: DashboardNotification[] = [
-  {
-    id: "notif-1",
-    title: "New Booking Submitted",
-    message: "2008 Honda Ridgeline booked by Carlos Mendoza ($150.00). Payment verification pending.",
-    type: "payment",
-    link: "/dashboard/bookings",
-    read: false,
-    createdAt: "2026-10-07T11:45:00.000Z",
-  },
-  {
-    id: "notif-2",
-    title: "New Commercial Quote Request",
-    message: "David Gutierrez requested Backhoe Loader with operator for Sugar Land site.",
-    type: "quote",
-    link: "/dashboard/quotes",
-    read: false,
-    createdAt: "2026-10-07T08:15:00.000Z",
-  },
-  {
-    id: "notif-3",
-    title: "Yard Dispatch Status",
-    message: "SW Houston Yard is active with 15-minute turnaround enabled.",
-    type: "system",
-    read: true,
-    createdAt: "2026-10-06T07:00:00.000Z",
-  },
-];
+const SEED_NOTIFS: DashboardNotification[] = [];
 
 // Auto-sync with MongoDB on client mount
 if (typeof window !== "undefined") {
   import("./api/quotes.functions").then(({ getQuotesDb }) => {
     getQuotesDb().then((res) => {
-      if (res && res.success && res.quotes && res.quotes.length > 0) {
+      if (res && res.success && (res as any).source === "mongodb" && Array.isArray(res.quotes)) {
         try {
           localStorage.setItem(STORAGE_KEY_QUOTES, JSON.stringify(res.quotes));
           window.dispatchEvent(new Event("m3-quotes-changed"));
@@ -153,7 +82,7 @@ if (typeof window !== "undefined") {
   });
   import("./api/notifications.functions").then(({ getNotificationsDb }) => {
     getNotificationsDb().then((res) => {
-      if (res && res.success && res.notifications && res.notifications.length > 0) {
+      if (res && res.success && (res as any).source === "mongodb" && Array.isArray(res.notifications)) {
         try {
           localStorage.setItem(STORAGE_KEY_NOTIFS, JSON.stringify(res.notifications));
           window.dispatchEvent(new Event("m3-notifs-changed"));
@@ -163,22 +92,9 @@ if (typeof window !== "undefined") {
   });
   import("./api/equipment.functions").then(({ getEquipmentDb }) => {
     getEquipmentDb().then((res) => {
-      if (res && res.success && res.equipment && res.equipment.length > 0) {
+      if (res && res.success && Array.isArray(res.equipment)) {
         try {
-          const overrides = getFleetOverrides();
-          const fleetData = (res.equipment as unknown as Equipment[]).map((item) => {
-            const ov = overrides[item.slug] || (item.id ? overrides[item.id] : undefined);
-            if (!ov) return item;
-            return {
-              ...item,
-              ...(ov.dayRate !== undefined ? { dayRate: ov.dayRate } : {}),
-              ...(ov.monthRate !== undefined ? { monthRate: ov.monthRate } : {}),
-              ...(ov.pricingUnit ? { pricingUnit: ov.pricingUnit } : {}),
-              ...(ov.featured !== undefined ? { featured: ov.featured } : {}),
-              ...(ov.status ? { overrideStatus: ov.status, status: ov.status } : {}),
-            };
-          });
-          localStorage.setItem(STORAGE_KEY_MANAGED_FLEET, JSON.stringify(fleetData));
+          localStorage.setItem(STORAGE_KEY_MANAGED_FLEET, JSON.stringify(res.equipment));
           window.dispatchEvent(new Event("m3-fleet-changed"));
         } catch {}
       }
@@ -288,15 +204,11 @@ export function markAllNotificationsAsRead(): void {
 }
 
 // --- Fleet Overrides API ---
+// Fleet overrides used to be applied on top of database values from localStorage, which let stale
+// browser data shadow MongoDB. The database is now the single source of truth, so nothing is applied
+// from here any more (edits are written to MongoDB via updateEquipmentDb instead).
 export function getFleetOverrides(): Record<string, FleetOverride> {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_FLEET_OVERRIDES);
-    if (!raw) return {};
-    return JSON.parse(raw);
-  } catch {
-    return {};
-  }
+  return {};
 }
 
 export function saveFleetOverride(override: FleetOverride): void {
@@ -372,73 +284,32 @@ export type ManagedFleetItem = Equipment & {
   overrideStatus?: "available" | "booked" | "maintenance" | undefined;
 };
 
-// Helper to get all equipment merged with local admin overrides & custom products
+// Helper to get all equipment from local store (synced from MongoDB)
 export function getManagedFleet(): ManagedFleetItem[] {
-  let list: ManagedFleetItem[] = [];
-  const overrides = getFleetOverrides();
-
   if (typeof window !== "undefined") {
     try {
       const raw = localStorage.getItem(STORAGE_KEY_MANAGED_FLEET);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          list = parsed as ManagedFleetItem[];
+        if (Array.isArray(parsed)) {
+          return parsed as ManagedFleetItem[];
         }
       }
     } catch {}
   }
-
-  if (list.length === 0) {
-    const custom = getCustomFleet();
-    const allBase = [...custom, ...equipment.filter((e) => !custom.some((c) => c.slug === e.slug))];
-    list = allBase as ManagedFleetItem[];
-  }
-
-  // Apply any active overrides onto list items
-  list = list.map((item) => {
-    const ov = overrides[item.slug] || (item.id ? overrides[item.id] : undefined);
-    if (!ov) return item;
-    return {
-      ...item,
-      ...(ov.dayRate !== undefined ? { dayRate: ov.dayRate } : {}),
-      ...(ov.monthRate !== undefined ? { monthRate: ov.monthRate } : {}),
-      ...(ov.pricingUnit ? { pricingUnit: ov.pricingUnit } : {}),
-      ...(ov.featured !== undefined ? { featured: ov.featured } : {}),
-      ...(ov.status ? { overrideStatus: ov.status, status: ov.status } : {}),
-    };
-  });
-
-  if (typeof window !== "undefined" && list.length > 0) {
-    try {
-      localStorage.setItem(STORAGE_KEY_MANAGED_FLEET, JSON.stringify(list));
-    } catch {}
-  }
-
-  // Always deduplicate to guarantee 100% unique items
-  const { kept, removedSlugs } = deduplicateFleet<ManagedFleetItem>(list);
-  if (removedSlugs.length > 0 && typeof window !== "undefined") {
-    try {
-      localStorage.setItem(STORAGE_KEY_MANAGED_FLEET, JSON.stringify(kept));
-      const cleanCustom = getCustomFleet().filter((c) => !removedSlugs.includes(c.slug));
-      localStorage.setItem(STORAGE_KEY_CUSTOM_FLEET, JSON.stringify(cleanCustom));
-    } catch {}
-  }
-
-  return kept;
+  return [];
 }
 
 export function resetCatalogToExcel(): Equipment[] {
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem(STORAGE_KEY_MANAGED_FLEET, JSON.stringify(equipment));
       localStorage.removeItem(STORAGE_KEY_CUSTOM_FLEET);
       localStorage.removeItem(STORAGE_KEY_FLEET_OVERRIDES);
-      window.dispatchEvent(new Event("m3-fleet-changed"));
     } catch {}
   }
-  return equipment;
+  return [];
 }
+
 
 export function cleanAllDuplicates(): { removedCount: number; remainingCount: number } {
   if (typeof window === "undefined") return { removedCount: 0, remainingCount: 0 };
@@ -532,22 +403,10 @@ export function useManagedFleet() {
     let isMounted = true;
     import("./api/equipment.functions").then(({ getEquipmentDb }) => {
       getEquipmentDb().then((res) => {
-        if (isMounted && res && res.success && res.equipment && res.equipment.length > 0) {
-          const overrides = getFleetOverrides();
-          const merged = (res.equipment as unknown as Equipment[]).map((item) => {
-            const ov = overrides[item.slug] || (item.id ? overrides[item.id] : undefined);
-            if (!ov) return item;
-            return {
-              ...item,
-              ...(ov.dayRate !== undefined ? { dayRate: ov.dayRate } : {}),
-              ...(ov.monthRate !== undefined ? { monthRate: ov.monthRate } : {}),
-              ...(ov.pricingUnit ? { pricingUnit: ov.pricingUnit } : {}),
-              ...(ov.featured !== undefined ? { featured: ov.featured } : {}),
-              ...(ov.status ? { overrideStatus: ov.status, status: ov.status } : {}),
-            };
-          });
-          setManagedFleet(merged);
-          setFleet(merged);
+        if (isMounted && res && res.success && Array.isArray(res.equipment)) {
+          const list = res.equipment as unknown as Equipment[];
+          setManagedFleet(list);
+          setFleet(list);
         }
       }).catch(() => {});
     });

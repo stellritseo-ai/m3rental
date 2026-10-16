@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { connectDB } from "../db";
+import { categories } from "@/data/equipment";
 import { BookingDoc } from "./bookings.functions";
 import { RentalQuoteDoc } from "./quotes.functions";
 import { ManagedEquipmentDoc } from "./equipment.functions";
@@ -22,63 +23,75 @@ export interface DashboardMetricsDoc {
   };
 }
 
-const DEFAULT_METRICS: DashboardMetricsDoc = {
-  totalRevenue: 18450,
-  activeRentalsCount: 7,
-  pendingVerificationsCount: 2,
-  openQuotesCount: 3,
-  totalFleetCount: 18,
-  recentBookings: [],
-  recentQuotes: [],
-  categoryDistribution: [
-    { name: "Pickups & Trucks", count: 18, fill: "#0040DD" },
-    { name: "Utility Trailers", count: 24, fill: "#16A34A" },
-    { name: "Heavy Machinery", count: 12, fill: "#F59E0B" },
-    { name: "Passenger Shuttle", count: 8, fill: "#7414CA" },
-    { name: "Specialty / RV", count: 10, fill: "#0284C7" },
-  ],
-  trendData7D: [
-    { label: "Mon", revenue: 450, bookings: 3, contractors: 2 },
-    { label: "Tue", revenue: 750, bookings: 5, contractors: 4 },
-    { label: "Wed", revenue: 600, bookings: 4, contractors: 3 },
-    { label: "Thu", revenue: 1100, bookings: 7, contractors: 5 },
-    { label: "Fri", revenue: 1650, bookings: 11, contractors: 8 },
-    { label: "Sat", revenue: 1900, bookings: 13, contractors: 9 },
-    { label: "Sun", revenue: 1250, bookings: 8, contractors: 6 },
-  ],
-  trendData30D: [
-    { label: "Week 1", revenue: 4200, bookings: 28, contractors: 19 },
-    { label: "Week 2", revenue: 5800, bookings: 36, contractors: 24 },
-    { label: "Week 3", revenue: 6950, bookings: 44, contractors: 31 },
-    { label: "Week 4", revenue: 8400, bookings: 52, contractors: 38 },
-  ],
-  dbStatus: {
-    connected: false,
-    cluster: "m3rental.1hwn1am.mongodb.net",
-    database: "m3_rental",
-  },
-};
+const CLUSTER = "m3rental.1hwn1am.mongodb.net";
+const DATABASE = "m3_rental";
+const CATEGORY_COLORS = [
+  "#0040DD", "#16A34A", "#F59E0B", "#7414CA", "#0284C7",
+  "#DC2626", "#0891B2", "#CA8A04", "#9333EA", "#475569",
+  "#EA580C", "#059669", "#DB2777", "#4F46E5", "#65A30D",
+];
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+type TrendPoint = { label: string; revenue: number; bookings: number; contractors: number };
+
+/** Honest empty state (all zeros) shown only when the database cannot be reached — never fake numbers. */
+function emptyMetrics(connected: boolean): DashboardMetricsDoc {
+  return {
+    totalRevenue: 0,
+    activeRentalsCount: 0,
+    pendingVerificationsCount: 0,
+    openQuotesCount: 0,
+    totalFleetCount: 0,
+    recentBookings: [],
+    recentQuotes: [],
+    categoryDistribution: [],
+    trendData7D: DAY_LABELS.map((label) => ({ label, revenue: 0, bookings: 0, contractors: 0 })),
+    trendData30D: [1, 2, 3, 4].map((w) => ({ label: `Week ${w}`, revenue: 0, bookings: 0, contractors: 0 })),
+    dbStatus: { connected, cluster: CLUSTER, database: DATABASE },
+  };
+}
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+/** Aggregates real bookings into chart buckets. Revenue counts only approved / confirmed bookings. */
+function buildTrend(
+  bookings: BookingDoc[],
+  buckets: { label: string; from: Date; to: Date }[]
+): TrendPoint[] {
+  return buckets.map(({ label, from, to }) => {
+    const inRange = bookings.filter((b) => {
+      const t = new Date(b.createdAt).getTime();
+      return t >= from.getTime() && t < to.getTime();
+    });
+    const earning = inRange.filter((b) => b.paymentStatus === "approved" || b.bookingStatus === "confirmed");
+    return {
+      label,
+      revenue: earning.reduce((s, b) => s + (b.totalAmount || 0), 0),
+      bookings: inRange.length,
+      contractors: new Set(inRange.map((b) => b.customer?.email?.toLowerCase()).filter(Boolean)).size,
+    };
+  });
+}
 
 export const getDashboardOverviewDb = createServerFn({ method: "POST" })
   .handler(async (): Promise<{ success: boolean; data: DashboardMetricsDoc }> => {
     try {
       const db = await connectDB();
       if (!db) {
-        return { success: true, data: DEFAULT_METRICS };
+        return { success: true, data: emptyMetrics(false) };
       }
 
-      const bookingsCol = db.collection<BookingDoc>("bookings");
-      const quotesCol = db.collection<RentalQuoteDoc>("quotes");
-      const equipmentCol = db.collection<ManagedEquipmentDoc>("equipment");
-
-      // Fetch all collections in parallel
       const [allBookings, allQuotes, allEquipment] = await Promise.all([
-        bookingsCol.find({}).sort({ createdAt: -1 }).toArray(),
-        quotesCol.find({}).sort({ createdAt: -1 }).toArray(),
-        equipmentCol.find({}).toArray(),
+        db.collection<BookingDoc>("bookings").find({}).sort({ createdAt: -1 }).toArray(),
+        db.collection<RentalQuoteDoc>("quotes").find({}).sort({ createdAt: -1 }).toArray(),
+        db.collection<ManagedEquipmentDoc>("equipment").find({}, { projection: { category: 1 } }).toArray(),
       ]);
 
-      // Calculate Metrics
+      // ── Real KPIs ──
       let totalRevenue = 0;
       let pendingVerificationsCount = 0;
       let activeRentalsCount = 0;
@@ -88,79 +101,48 @@ export const getDashboardOverviewDb = createServerFn({ method: "POST" })
         if (b.paymentStatus === "approved" || b.bookingStatus === "confirmed") {
           totalRevenue += b.totalAmount || 0;
         }
-        if (b.paymentStatus === "verification_pending") {
+        if (b.paymentStatus === "verification_pending" && b.bookingStatus !== "cancelled") {
           pendingVerificationsCount += 1;
         }
-        if (
-          b.bookingStatus === "confirmed" &&
-          b.pickupDate <= todayStr &&
-          b.returnDate >= todayStr
-        ) {
+        if (b.bookingStatus === "confirmed" && b.pickupDate <= todayStr && b.returnDate >= todayStr) {
           activeRentalsCount += 1;
         }
       });
 
-      // If active rentals is 0 but we have confirmed bookings, show count of confirmed
-      if (activeRentalsCount === 0) {
-        activeRentalsCount = allBookings.filter((b) => b.bookingStatus === "confirmed").length;
-      }
+      const openQuotesCount = allQuotes.filter((q) => q.status === "new" || q.status === "quoted").length;
 
-      // Add baseline starting revenue from business records
-      if (totalRevenue < 12000) {
-        totalRevenue += 14850;
-      }
-
-      const openQuotesCount = allQuotes.filter(
-        (q) => q.status === "new" || q.status === "quoted"
-      ).length;
-
-      const totalFleetCount = allEquipment.length > 0 ? allEquipment.length : 18;
-
-      // Clean documents
-      const recentBookings: BookingDoc[] = allBookings.slice(0, 8).map((b) => {
-        const { _id, ...rest } = b as any;
-        return rest as BookingDoc;
+      const strip = <T,>(docs: T[]) => docs.map((d) => {
+        const { _id, ...rest } = d as any;
+        return rest as T;
       });
 
-      const recentQuotes: RentalQuoteDoc[] = allQuotes.slice(0, 6).map((q) => {
-        const { _id, ...rest } = q as any;
-        return rest as RentalQuoteDoc;
-      });
-
-      // Dynamic Category Distribution
-      const catCountMap: Record<string, number> = {};
+      // ── Category distribution straight from the equipment collection ──
+      const catCount: Record<string, number> = {};
       allEquipment.forEach((eq) => {
-        const cat = eq.category || "utility-equipment";
-        catCountMap[cat] = (catCountMap[cat] || 0) + 1;
+        const cat = eq.category || "specialty-equipment";
+        catCount[cat] = (catCount[cat] || 0) + 1;
       });
+      const categoryDistribution = categories
+        .filter((c) => (catCount[c.id] || 0) > 0)
+        .map((c, i) => ({
+          name: c.label,
+          count: catCount[c.id] || 0,
+          fill: CATEGORY_COLORS[i % CATEGORY_COLORS.length] as string,
+        }))
+        .sort((a, b) => b.count - a.count);
 
-      const categoryDistribution = [
-        {
-          name: "Pickup Trucks",
-          count: (catCountMap["pickup-trucks"] || 0) + (catCountMap["trucks"] || 0) || 5,
-          fill: "#0040DD",
-        },
-        {
-          name: "Utility Trailers",
-          count: catCountMap["trailers"] || 4,
-          fill: "#16A34A",
-        },
-        {
-          name: "Heavy Machinery",
-          count: (catCountMap["construction-equipment"] || 0) + (catCountMap["utility-equipment"] || 0) || 4,
-          fill: "#F59E0B",
-        },
-        {
-          name: "Passenger Shuttle",
-          count: catCountMap["buses"] || 2,
-          fill: "#7414CA",
-        },
-        {
-          name: "SUVs & Specialty",
-          count: (catCountMap["suvs"] || 0) + (catCountMap["specialty-equipment"] || 0) || 3,
-          fill: "#0284C7",
-        },
-      ];
+      // ── Real trends ──
+      const today = startOfDay(new Date());
+      const day = 86_400_000;
+
+      const buckets7 = Array.from({ length: 7 }, (_, i) => {
+        const from = new Date(today.getTime() - (6 - i) * day);
+        return { label: DAY_LABELS[from.getDay()] as string, from, to: new Date(from.getTime() + day) };
+      });
+      const buckets30 = Array.from({ length: 4 }, (_, i) => {
+        const to = new Date(today.getTime() + day - (3 - i) * 7 * day);
+        return { label: `Week ${i + 1}`, from: new Date(to.getTime() - 7 * day), to };
+      });
 
       return {
         success: true,
@@ -169,21 +151,17 @@ export const getDashboardOverviewDb = createServerFn({ method: "POST" })
           activeRentalsCount,
           pendingVerificationsCount,
           openQuotesCount,
-          totalFleetCount,
-          recentBookings,
-          recentQuotes,
+          totalFleetCount: allEquipment.length,
+          recentBookings: strip(allBookings.slice(0, 8)),
+          recentQuotes: strip(allQuotes.slice(0, 6)),
           categoryDistribution,
-          trendData7D: DEFAULT_METRICS.trendData7D,
-          trendData30D: DEFAULT_METRICS.trendData30D,
-          dbStatus: {
-            connected: true,
-            cluster: "m3rental.1hwn1am.mongodb.net",
-            database: "m3_rental",
-          },
+          trendData7D: buildTrend(allBookings, buckets7),
+          trendData30D: buildTrend(allBookings, buckets30),
+          dbStatus: { connected: true, cluster: CLUSTER, database: DATABASE },
         },
       };
     } catch (err: any) {
       console.error("[DB] Error generating dashboard overview:", err);
-      return { success: true, data: DEFAULT_METRICS };
+      return { success: true, data: emptyMetrics(false) };
     }
   });

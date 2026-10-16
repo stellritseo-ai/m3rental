@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import type { Equipment } from "@/data/equipment";
+import { showCartToast, showCartRemoveToast } from "@/components/cart/CartNotificationToast";
 
 export type CartItem = {
   equipment: Equipment;
@@ -62,13 +63,7 @@ export function addToCart(equipment: Equipment, days: number = 1, showToast: boo
     existing.rentalDays += days;
     saveCartItems(items);
     if (showToast) {
-      toast.success(`Updated rental days for ${equipment.name}`, {
-        description: `Now reserved for ${existing.rentalDays} days.`,
-        action: {
-          label: "View Cart",
-          onClick: () => openCartDrawer(),
-        },
-      });
+      showCartToast(equipment, existing.rentalDays, true);
     }
   } else {
     items.push({
@@ -78,22 +73,25 @@ export function addToCart(equipment: Equipment, days: number = 1, showToast: boo
     });
     saveCartItems(items);
     if (showToast) {
-      toast.success(`Added to Cart: ${equipment.name}`, {
-        description: `$${equipment.dayRate}/day • Houston Yard Ready`,
-        action: {
-          label: "View Cart",
-          onClick: () => openCartDrawer(),
-        },
-      });
+      showCartToast(equipment, Math.max(1, days), false);
     }
   }
 }
 
 export function removeFromCart(slug: string): void {
   const items = getCartItems();
+  const target = items.find((i) => i.equipment.slug === slug);
   const filtered = items.filter((i) => i.equipment.slug !== slug);
   saveCartItems(filtered);
-  toast.info("Item removed from your rental cart");
+
+  if (target) {
+    showCartRemoveToast(target.equipment.name, target.equipment.image, () => {
+      addToCart(target.equipment, target.rentalDays, false);
+      showCartToast(target.equipment, target.rentalDays, false);
+    });
+  } else {
+    showCartRemoveToast("Item removed from your rental cart");
+  }
 }
 
 export function updateCartDays(slug: string, days: number): void {
@@ -107,7 +105,7 @@ export function updateCartDays(slug: string, days: number): void {
 
 export function clearCart(): void {
   saveCartItems([]);
-  toast.info("Your rental cart has been cleared");
+  showCartRemoveToast("Rental cart cleared", undefined);
 }
 
 export function useCart() {

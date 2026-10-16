@@ -22,7 +22,7 @@ import {
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { EquipmentCard } from "@/components/site/EquipmentCard";
 import { Reveal } from "@/components/site/Reveal";
-import { categories, equipment as defaultEquipment, Equipment, type CategoryId } from "@/data/equipment";
+import { categories, Equipment, type CategoryId } from "@/data/equipment";
 import { useManagedFleet } from "@/lib/dashboard-store";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/equipment/")({
         return { initialFleet: res.equipment as unknown as Equipment[] };
       }
     } catch {}
-    return { initialFleet: defaultEquipment };
+    return { initialFleet: [] as Equipment[] };
   },
   validateSearch: (search: Record<string, unknown>): Search =>
     cleanSearch({
@@ -110,11 +110,11 @@ function CatalogPage() {
   const loaderData = Route.useLoaderData();
   const { fleet: liveFleet } = useManagedFleet();
   const currentFleet =
-    liveFleet && liveFleet.length >= defaultEquipment.length
-      ? liveFleet
-      : (loaderData?.initialFleet && loaderData.initialFleet.length >= defaultEquipment.length
-          ? loaderData.initialFleet
-          : defaultEquipment);
+    loaderData?.initialFleet && loaderData.initialFleet.length > 0
+      ? loaderData.initialFleet
+      : liveFleet && liveFleet.length > 0
+        ? liveFleet
+        : [];
 
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });

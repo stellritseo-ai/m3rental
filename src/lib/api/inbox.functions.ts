@@ -109,6 +109,7 @@ export const updateMessageDb = createServerFn({ method: "POST" })
 export const createMessageDb = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
+      id: z.string().optional(),
       senderName: z.string(),
       senderEmail: z.string(),
       senderPhone: z.string(),
@@ -120,7 +121,7 @@ export const createMessageDb = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const now = new Date().toISOString();
-    const id = `msg-${Date.now()}`;
+    const id = data.id || `msg-${Date.now()}`;
     const newMsg: DispatchMessageDoc = {
       id,
       senderName: data.senderName,

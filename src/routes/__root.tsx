@@ -81,6 +81,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
+      {
+        name: "google-site-verification",
+        content: "zekq5A0tscZGD4daC0BTSbzqQ06iKVX3oyb7euTqP0s",
+      },
       { title: "M3 Rental | Equipment & Vehicle Rentals in Houston, TX" },
       {
         name: "description",
@@ -117,6 +121,10 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        <meta
+          name="google-site-verification"
+          content="zekq5A0tscZGD4daC0BTSbzqQ06iKVX3oyb7euTqP0s"
+        />
         <HeadContent />
       </head>
       <body>

@@ -678,7 +678,7 @@ export function Footer() {
                   rel="noopener noreferrer"
                   className="text-slate-300 hover:text-[#FFD54F] transition-colors underline underline-offset-2 font-bold"
                 >
-                  stellrit.com
+                  StellR IT LLC
                 </a>
               </p>
               <span className="hidden sm:inline text-white/20">|</span>

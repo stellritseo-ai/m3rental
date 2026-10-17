@@ -664,18 +664,28 @@ export function Footer() {
         <div className="border-t border-white/10 px-5 sm:px-8 lg:px-12 py-6 bg-black/40 pb-28 lg:pb-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             {/* Copyright Info */}
-            <div className="flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-xs text-slate-400 font-semibold order-2 sm:order-1">
+            <div className="flex flex-col sm:flex-row flex-wrap items-center gap-1.5 sm:gap-3 text-xs text-slate-400 font-semibold order-2 sm:order-1">
               <p>
                 © 2026 M3 Rental, LLC. All Rights Reserved. Houston Commercial
                 Fleet &amp; Equipment.
-                Design By StellR IT LLC
+              </p>
+              <span className="hidden sm:inline text-white/20">|</span>
+              <p className="text-slate-400">
+                Design by{" "}
+                <a
+                  href="https://stellrit.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-300 hover:text-[#FFD54F] transition-colors underline underline-offset-2 font-bold"
+                >
+                  StellR IT LLC
+                </a>
               </p>
               <span className="hidden sm:inline text-white/20">|</span>
               <p className="text-slate-400">
                 Family &amp; Contractor Owned •{" "}
                 <span className="text-[#FFD54F] font-bold">Houston, TX</span>
               </p>
-              <span className="hidden sm:inline text-white/20">|</span>
             </div>
 
             {/* Trust badge & Back to top button */}

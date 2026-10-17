@@ -28,7 +28,7 @@ import {
   X,
   ZoomIn,
 } from "lucide-react";
-import type { Equipment } from "@/data/equipment";
+import { operatorLabel, type Equipment } from "@/data/equipment";
 import {
   Booking,
   calculateRentalPrice,
@@ -63,8 +63,16 @@ export function VehicleBookingCard({ vehicle }: Props) {
   const [pickupDate, setPickupDate] = useState<string>("");
   const [returnDate, setReturnDate] = useState<string>("");
 
-  // Operation mode preference state ("self" vs "operator")
-  const [operationMode, setOperationMode] = useState<"self" | "operator">("self");
+  // Dynamic operator mode derived from vehicle dashboard configuration
+  const isOperatorIncluded =
+    vehicle.operator === "operator" ||
+    vehicle.operator === "driver" ||
+    vehicle.operator === "driver-operator" ||
+    Boolean(vehicle.operatorIncluded);
+
+  const operationMode: "self" | "operator" = isOperatorIncluded ? "operator" : "self";
+  const currentOperatorLabel =
+    operatorLabel[vehicle.operator] || (isOperatorIncluded ? "Operator Included" : "Self Operated");
 
   // Terms and conditions acceptance
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -525,77 +533,52 @@ export function VehicleBookingCard({ vehicle }: Props) {
               </div>
             )}
 
-            {/* ── OPERATION PREFERENCE SELECTION ── */}
-            <div className="space-y-2 pt-0.5">
-              <label className="block text-xs font-bold text-slate-800">
-                Do you want Self Operated or With Operator? <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setOperationMode("self")}
+            {/* ── DYNAMIC OPERATOR STATUS (Configured in dashboard) ── */}
+            <div
+              className={cn(
+                "p-3 rounded-xl border flex items-center justify-between text-xs transition-all",
+                isOperatorIncluded
+                  ? "border-emerald-200/90 bg-emerald-50/70 text-emerald-950"
+                  : "border-slate-200/90 bg-slate-50/80 text-slate-800"
+              )}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
                   className={cn(
-                    "relative flex flex-col p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
-                    operationMode === "self"
-                      ? "border-[#0040DD] bg-blue-50/70 ring-2 ring-[#0040DD]/20 shadow-2xs"
-                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
+                    "size-8 rounded-lg flex items-center justify-center shrink-0",
+                    isOperatorIncluded
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-blue-100 text-[#0040DD]"
                   )}
                 >
-                  <div className="flex items-center justify-between w-full mb-1">
-                    <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                      <User className="size-3.5 text-[#0040DD]" />
-                      Self Operated
+                  {isOperatorIncluded ? (
+                    <ShieldCheck className="size-4" />
+                  ) : (
+                    <User className="size-4" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-bold text-slate-900 block truncate text-xs">
+                      {currentOperatorLabel}
                     </span>
                     <span
                       className={cn(
-                        "size-4 rounded-full border flex items-center justify-center transition-all",
-                        operationMode === "self"
-                          ? "border-[#0040DD] bg-[#0040DD]"
-                          : "border-slate-300 bg-white"
+                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 border",
+                        isOperatorIncluded
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-300/80"
+                          : "bg-blue-50 text-[#0040DD] border-blue-200"
                       )}
                     >
-                      {operationMode === "self" && (
-                        <span className="size-1.5 rounded-full bg-white" />
-                      )}
+                      {isOperatorIncluded ? "Included" : "Self"}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-500 font-medium leading-snug">
-                    You operate or drive yourself with a valid driver license.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setOperationMode("operator")}
-                  className={cn(
-                    "relative flex flex-col p-3 rounded-xl border text-left transition-all cursor-pointer select-none",
-                    operationMode === "operator"
-                      ? "border-[#16A34A] bg-emerald-50/70 ring-2 ring-[#16A34A]/20 shadow-2xs"
-                      : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/60"
-                  )}
-                >
-                  <div className="flex items-center justify-between w-full mb-1">
-                    <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-                      <ShieldCheck className="size-3.5 text-[#16A34A]" />
-                      With Operator
-                    </span>
-                    <span
-                      className={cn(
-                        "size-4 rounded-full border flex items-center justify-center transition-all",
-                        operationMode === "operator"
-                          ? "border-[#16A34A] bg-[#16A34A]"
-                          : "border-slate-300 bg-white"
-                      )}
-                    >
-                      {operationMode === "operator" && (
-                        <span className="size-1.5 rounded-full bg-white" />
-                      )}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 font-medium leading-snug">
-                    Certified professional machine operator dispatched with unit.
-                  </p>
-                </button>
+                  <span className="text-[11px] text-slate-500 block truncate mt-0.5">
+                    {isOperatorIncluded
+                      ? "Certified machine operator dispatched with equipment"
+                      : "Self-operated equipment (valid driver license required)"}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -614,15 +597,15 @@ export function VehicleBookingCard({ vehicle }: Props) {
               <div className="flex justify-between text-xs text-slate-600 font-medium">
                 <span>Operation Mode:</span>
                 <span className="font-bold text-slate-900 flex items-center gap-1">
-                  {operationMode === "operator" ? (
-                    <span className="text-purple-700 font-extrabold flex items-center gap-1">
-                      <ShieldCheck className="size-3 text-purple-600" />
-                      With Operator
+                  {isOperatorIncluded ? (
+                    <span className="text-emerald-700 font-extrabold flex items-center gap-1">
+                      <ShieldCheck className="size-3 text-emerald-600" />
+                      {currentOperatorLabel}
                     </span>
                   ) : (
                     <span className="text-slate-900 font-bold flex items-center gap-1">
                       <User className="size-3 text-[#0040DD]" />
-                      Self Operated
+                      {currentOperatorLabel}
                     </span>
                   )}
                 </span>
@@ -705,8 +688,8 @@ export function VehicleBookingCard({ vehicle }: Props) {
               <span className="text-xs font-bold text-[#0040DD] bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200 flex items-center gap-1.5">
                 <span>{rentalDays} Days: ${totalAmount}.00</span>
                 <span className="text-slate-300">•</span>
-                <span className={operationMode === "operator" ? "text-purple-700 font-extrabold" : "text-[#0040DD]"}>
-                  {operationMode === "operator" ? "With Operator" : "Self-Operated"}
+                <span className={isOperatorIncluded ? "text-emerald-700 font-extrabold" : "text-[#0040DD]"}>
+                  {currentOperatorLabel}
                 </span>
               </span>
             </div>

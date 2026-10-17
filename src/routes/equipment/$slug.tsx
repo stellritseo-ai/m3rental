@@ -124,6 +124,16 @@ function EquipmentDetailPage() {
   const vehicleColor = item.color || "Commercial Fleet Metallic";
   const unitId = item.id || `M3-${item.slug.slice(0, 3).toUpperCase()}`;
 
+  // Dynamic operator policy derived from dashboard equipment settings
+  const isOperatorIncluded =
+    item.operator === "operator" ||
+    item.operator === "driver" ||
+    item.operator === "driver-operator" ||
+    Boolean(item.operatorIncluded);
+
+  const currentOperatorLabel =
+    operatorLabel[item.operator] || (isOperatorIncluded ? "Operator Included" : "Self Operated");
+
   // Rich categorized specs based on vehicle or equipment type
   const specItems = useMemo(() => {
     const list: { label: string; value: string; icon: any }[] = [
@@ -143,9 +153,9 @@ function EquipmentDetailPage() {
         icon: Sparkles,
       },
       {
-        label: "Operation Options",
-        value: "Self-Operated or With Operator",
-        icon: UserCheck,
+        label: "Operation Policy",
+        value: currentOperatorLabel,
+        icon: isOperatorIncluded ? ShieldCheck : UserCheck,
       },
       {
         label: "Fleet Availability",
@@ -542,16 +552,22 @@ function EquipmentDetailPage() {
 
                 <div className="rounded-2xl border border-slate-200/90 bg-white p-4 shadow-2xs hover:border-[#0040DD]/30 transition-all">
                   <div className="flex items-center gap-2 text-purple-600 mb-1">
-                    <UserCheck className="size-4" />
+                    {isOperatorIncluded ? (
+                      <ShieldCheck className="size-4" />
+                    ) : (
+                      <UserCheck className="size-4" />
+                    )}
                     <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                      Operation Choice
+                      Operation Policy
                     </span>
                   </div>
                   <p className="text-sm font-black text-slate-900 mt-1">
-                    Self or With Operator
+                    {currentOperatorLabel}
                   </p>
                   <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                    Select preference in booking card
+                    {isOperatorIncluded
+                      ? "Certified operator dispatched with unit"
+                      : "Self-operated by authorized renter"}
                   </p>
                 </div>
 

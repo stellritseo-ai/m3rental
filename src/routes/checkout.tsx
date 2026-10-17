@@ -10,6 +10,7 @@ import {
   Clock,
   Copy,
   ExternalLink,
+  FileText,
   Info,
   Layers,
   Lock,
@@ -26,12 +27,15 @@ import {
   Truck,
   UploadCloud,
   User,
+  UserCheck,
+  X,
   Zap,
+  ZoomIn,
 } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useCart } from "@/lib/cart-store";
-import { categoryLabel } from "@/data/equipment";
+import { categoryLabel, operatorLabel } from "@/data/equipment";
 import {
   createBooking,
   DEFAULT_PAYMENT_SETTINGS,
@@ -93,18 +97,26 @@ function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [paymentScreenshot, setPaymentScreenshot] = useState<string>("");
   const [screenshotFileName, setScreenshotFileName] = useState<string>("");
+  const [governmentId, setGovernmentId] = useState<string>("");
+  const [govIdFileName, setGovIdFileName] = useState<string>("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isQrZoomed, setIsQrZoomed] = useState(false);
+
+  // Terms Acceptance
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Submission & Confirmed State
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBookings, setConfirmedBookings] = useState<Booking[] | null>(null);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(getPaymentSettings());
 
+  // Mount-time database sync for live QR codes & payment accounts
   useEffect(() => {
     getPaymentSettingsDb()
       .then((res) => {
         if (res && res.success && res.settings) {
-          const fresh = {
+          const fresh: PaymentSettings = {
             zelle: res.settings.zelle,
             cashapp: res.settings.cashapp,
           };
@@ -127,6 +139,52 @@ function CheckoutPage() {
     };
   }, []);
 
+  // Compute active QR code URLs and configuration
+  const activeQrUrl = useMemo(() => {
+    if (paymentMethod === "zelle") {
+      return paymentSettings.zelle.qrCodeUrl || DEFAULT_PAYMENT_SETTINGS.zelle.qrCodeUrl;
+    }
+    if (paymentMethod === "cashapp") {
+      return paymentSettings.cashapp.qrCodeUrl || DEFAULT_PAYMENT_SETTINGS.cashapp.qrCodeUrl;
+    }
+    return "";
+  }, [paymentMethod, paymentSettings]);
+
+  const defaultFallbackUrl = useMemo(() => {
+    if (paymentMethod === "zelle") return DEFAULT_PAYMENT_SETTINGS.zelle.qrCodeUrl;
+    if (paymentMethod === "cashapp") return DEFAULT_PAYMENT_SETTINGS.cashapp.qrCodeUrl;
+    return "";
+  }, [paymentMethod]);
+
+  const currentPayConfig = useMemo(() => {
+    if (paymentMethod === "zelle") {
+      return {
+        title: "Zelle® Transfer",
+        accountName: paymentSettings.zelle.accountName,
+        accountDetail: paymentSettings.zelle.accountEmailOrPhone,
+        detailLabel: "Zelle Email / Phone",
+        instructions: paymentSettings.zelle.instructions,
+      };
+    }
+    if (paymentMethod === "cashapp") {
+      return {
+        title: "Cash App",
+        accountName: paymentSettings.cashapp.accountName,
+        accountDetail: paymentSettings.cashapp.cashtag,
+        detailLabel: "Cash App Cashtag",
+        instructions: paymentSettings.cashapp.instructions,
+      };
+    }
+    return {
+      title: "Cash on Pickup",
+      accountName: "M3 Rental Houston Counter",
+      accountDetail: "11732 S Wilcrest Dr, Houston, TX 77099",
+      detailLabel: "Yard Counter",
+      instructions: "Pay at counter upon physical inspection.",
+    };
+  }, [paymentMethod, paymentSettings]);
+
+  // Copy helper
   const handleCopy = (text: string, key: string, label: string) => {
     navigator.clipboard?.writeText(text);
     setCopiedKey(key);
@@ -134,6 +192,7 @@ function CheckoutPage() {
     setTimeout(() => setCopiedKey(null), 2500);
   };
 
+  // Payment Screenshot handler
   const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -159,6 +218,43 @@ function CheckoutPage() {
     reader.readAsDataURL(file);
   };
 
+  const removeScreenshot = () => {
+    setPaymentScreenshot("");
+    setScreenshotFileName("");
+  };
+
+  // Government ID handler
+  const handleGovIdUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Please upload a valid image file (JPG, JPEG, or PNG).");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image file size exceeds 10MB limit.");
+      return;
+    }
+
+    setGovIdFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setGovernmentId(result);
+      toast.success("Government ID uploaded successfully!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeGovId = () => {
+    setGovernmentId("");
+    setGovIdFileName("");
+  };
+
+  // Order submission
   const handleSubmitOrder = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -184,8 +280,21 @@ function CheckoutPage() {
       return;
     }
 
+    // Required Government ID check
+    if (!governmentId) {
+      toast.error("Please upload a valid Government ID (Driver's License, State ID, or Passport).");
+      return;
+    }
+
+    // Required Payment Screenshot for digital transfers
     if (paymentMethod !== "cash" && !paymentScreenshot) {
       toast.error(`Please upload a screenshot of your ${paymentMethod === "zelle" ? "Zelle" : "Cash App"} transfer.`);
+      return;
+    }
+
+    // Terms Acceptance check
+    if (!acceptedTerms) {
+      toast.error("Please agree to the Terms & Conditions and Commercial Rental Agreement.");
       return;
     }
 
@@ -196,6 +305,15 @@ function CheckoutPage() {
       let allSuccess = true;
 
       for (const cartItem of items) {
+        // Derive dynamic operator mode based on dashboard configuration
+        const isOperatorIncluded =
+          cartItem.equipment.operator === "operator" ||
+          cartItem.equipment.operator === "driver" ||
+          cartItem.equipment.operator === "driver-operator" ||
+          Boolean(cartItem.equipment.operatorIncluded);
+
+        const operationMode: "self" | "operator" = isOperatorIncluded ? "operator" : "self";
+
         const res = createBooking({
           vehicleSlug: cartItem.equipment.slug,
           vehicleName: cartItem.equipment.name,
@@ -209,11 +327,13 @@ function CheckoutPage() {
           },
           pickupDate,
           returnDate,
+          operationMode,
           paymentMethod,
           paymentScreenshot:
             paymentMethod === "cash"
               ? "CASH_UPON_YARD_PICKUP"
               : paymentScreenshot,
+          governmentId: governmentId || undefined,
         });
 
         if (res.success && res.booking) {
@@ -238,7 +358,9 @@ function CheckoutPage() {
     }, 600);
   };
 
-  // ── SUCCESS CONFIRMATION VIEW ──
+  // ══════════════════════════════════════════════════
+  // SUCCESS CONFIRMATION VIEW
+  // ══════════════════════════════════════════════════
   if (confirmedBookings && confirmedBookings.length > 0) {
     const isCashOrder = paymentMethod === "cash";
 
@@ -260,9 +382,9 @@ function CheckoutPage() {
         </section>
 
         <section className="py-12 sm:py-16 px-4 sm:px-6 lg:px-8 bg-slate-50/60 min-h-[80vh]">
-          <div className="w-full max-w-3xl mx-auto space-y-8 animate-in fade-in duration-300">
+          <div className="w-full max-w-4xl mx-auto space-y-8 animate-in fade-in duration-300">
             {/* Header Success Card */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-8 lg:p-10 shadow-md text-center space-y-4">
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 lg:p-10 shadow-md text-center space-y-4">
               <div className="size-20 rounded-3xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle2 className="size-10 stroke-[2.5]" />
               </div>
@@ -275,7 +397,7 @@ function CheckoutPage() {
                   Your Equipment is Reserved!
                 </h1>
                 <p className="mt-2 text-sm text-slate-600 max-w-lg mx-auto font-medium leading-relaxed">
-                  Thank you, <strong className="text-slate-900">{customer.fullName}</strong>. Your rental order has been routed directly to our Houston yard dispatch desk on S Wilcrest Dr.
+                  Thank you, <strong className="text-slate-900">{customer.fullName}</strong>. Your rental reservation has been routed directly to our Houston yard dispatch desk on S Wilcrest Dr.
                 </p>
               </div>
 
@@ -301,8 +423,104 @@ function CheckoutPage() {
               </div>
             </div>
 
+            {/* Verification & Document Summary Card */}
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-xs space-y-6">
+              <h2 className="text-base font-black text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+                <ShieldCheck className="size-5 text-[#0040DD]" />
+                <span>Verification &amp; Attached Documents</span>
+              </h2>
+
+              <div className="grid sm:grid-cols-2 gap-4 text-xs">
+                {/* Government ID Slot */}
+                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <User className="size-4 text-[#16A34A]" />
+                      <span>Government ID</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider border border-emerald-200 flex items-center gap-1">
+                      <CheckCircle2 className="size-3" /> Attached
+                    </span>
+                  </div>
+                  {governmentId && (
+                    <div className="flex items-center gap-3 pt-1">
+                      <img
+                        src={governmentId}
+                        alt="Government ID"
+                        className="size-16 rounded-xl object-cover border border-slate-200 bg-white"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-800 block truncate text-xs">
+                          {govIdFileName || "government-id.png"}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block">
+                          Driver License / State ID / Passport
+                        </span>
+                        <span className="text-[10px] text-emerald-700 font-semibold mt-0.5 block">
+                          Ready for 5-minute counter handover
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Payment Screenshot Slot */}
+                <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <Banknote className="size-4 text-[#0040DD]" />
+                      <span>Payment Verification</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1",
+                        isCashOrder
+                          ? "bg-emerald-100 text-emerald-800 border-emerald-200"
+                          : "bg-amber-100 text-amber-900 border-amber-300"
+                      )}
+                    >
+                      {isCashOrder ? (
+                        <>
+                          <CheckCircle2 className="size-3" /> Cash at Yard
+                        </>
+                      ) : (
+                        <>
+                          <Clock className="size-3" /> Under Review
+                        </>
+                      )}
+                    </span>
+                  </div>
+
+                  {isCashOrder ? (
+                    <p className="text-slate-600 leading-relaxed text-[11px]">
+                      Pay exact cash <strong>${totalCost}.00</strong> at the counter upon vehicle inspection. No advance card hold.
+                    </p>
+                  ) : paymentScreenshot ? (
+                    <div className="flex items-center gap-3 pt-1">
+                      <img
+                        src={paymentScreenshot}
+                        alt="Payment Receipt"
+                        className="size-16 rounded-xl object-cover border border-slate-200 bg-white"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-bold text-slate-800 block truncate text-xs">
+                          {screenshotFileName || "payment-receipt.png"}
+                        </span>
+                        <span className="text-[11px] text-slate-500 block capitalize">
+                          {paymentMethod} Digital Transfer
+                        </span>
+                        <span className="text-[10px] text-purple-700 font-semibold mt-0.5 block">
+                          Dispatcher reviewing receipt
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+
             {/* Next Steps for Customer */}
-            <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-6 lg:p-8 shadow-xs space-y-5">
+            <div className="bg-white rounded-3xl border border-slate-200/90 p-6 sm:p-8 shadow-xs space-y-5">
               <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                 <Clock className="size-4.5 text-[#0040DD]" />
                 <span>Next Steps &amp; Equipment Pickup Instructions</span>
@@ -333,12 +551,10 @@ function CheckoutPage() {
                 <div className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-2">
                   <div className="flex items-center gap-2 font-black text-slate-900 text-sm">
                     {isCashOrder ? <Banknote className="size-4 text-emerald-600" /> : <ShieldCheck className="size-4 text-purple-600" />}
-                    <span>Payment Verification</span>
+                    <span>Rapid Turnaround Guarantee</span>
                   </div>
                   <p className="text-slate-600 leading-relaxed">
-                    {isCashOrder
-                      ? "Pay exact or rounded cash at the yard counter when you arrive. You will receive an immediate printed and digital receipt."
-                      : "Our dispatchers verify your uploaded digital transfer screenshot and ready your equipment keys and agreement in under 15 minutes."}
+                    Your equipment keys and rental documents are prepared in advance. Present your driver license or ID at the yard desk for rapid 15-minute exit.
                   </p>
                 </div>
               </div>
@@ -378,7 +594,9 @@ function CheckoutPage() {
     );
   }
 
-  // ── EMPTY CART VIEW ──
+  // ══════════════════════════════════════════════════
+  // EMPTY CART VIEW
+  // ══════════════════════════════════════════════════
   if (items.length === 0) {
     return (
       <SiteLayout>
@@ -392,7 +610,7 @@ function CheckoutPage() {
                 Your Rental Cart is Empty
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-                Add work trucks, commercial haulers, trailers, or heavy construction machinery from our Houston inventory to proceed with checkout.
+                Add commercial trucks, trailers, or heavy machinery from our Houston inventory to proceed with checkout.
               </p>
             </div>
             <div className="pt-2">
@@ -410,7 +628,9 @@ function CheckoutPage() {
     );
   }
 
-  // ── ACTIVE CHECKOUT FORM VIEW ──
+  // ══════════════════════════════════════════════════
+  // ACTIVE CHECKOUT FORM VIEW
+  // ══════════════════════════════════════════════════
   return (
     <SiteLayout>
       {/* Top Banner Ribbon */}
@@ -458,14 +678,14 @@ function CheckoutPage() {
             </Link>
 
             <span className="text-xs font-bold text-slate-500">
-              Checkout Step: Final Reservation
+              Checkout Step: Final Reservation &amp; Verification
             </span>
           </div>
 
           <form onSubmit={handleSubmitOrder}>
             <div className="grid gap-8 lg:grid-cols-[1.18fr_0.82fr] lg:gap-10 items-start">
               
-              {/* ── LEFT COLUMN: ITEMS, DATES, CUSTOMER, PAYMENT ── */}
+              {/* ── LEFT COLUMN: ITEMS, DATES, CUSTOMER, PAYMENT & DOCUMENTS ── */}
               <div className="space-y-8">
                 
                 {/* 1. Review Cart Items */}
@@ -490,6 +710,17 @@ function CheckoutPage() {
                       const { equipment, rentalDays } = cartItem;
                       const subtotal = equipment.dayRate * rentalDays;
 
+                      // Dynamic operator mode derived from equipment settings
+                      const isOperatorIncluded =
+                        equipment.operator === "operator" ||
+                        equipment.operator === "driver" ||
+                        equipment.operator === "driver-operator" ||
+                        Boolean(equipment.operatorIncluded);
+
+                      const opLabel =
+                        operatorLabel[equipment.operator] ||
+                        (isOperatorIncluded ? "Operator Included" : "Self Operated");
+
                       return (
                         <div
                           key={equipment.slug}
@@ -508,10 +739,30 @@ function CheckoutPage() {
                               />
                             </Link>
 
-                            <div className="min-w-0">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-[#0040DD] bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full inline-block mb-1">
-                                {categoryLabel(equipment.category)}
-                              </span>
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-[#0040DD] bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-full inline-block">
+                                  {categoryLabel(equipment.category)}
+                                </span>
+
+                                {/* Dynamic Operator Status Pill */}
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border",
+                                    isOperatorIncluded
+                                      ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                      : "bg-blue-50 text-[#0040DD] border-blue-200"
+                                  )}
+                                >
+                                  {isOperatorIncluded ? (
+                                    <ShieldCheck className="size-3 text-emerald-600" />
+                                  ) : (
+                                    <User className="size-3 text-[#0040DD]" />
+                                  )}
+                                  <span>{opLabel}</span>
+                                </span>
+                              </div>
+
                               <Link
                                 to="/equipment/$slug"
                                 params={{ slug: equipment.slug }}
@@ -519,7 +770,8 @@ function CheckoutPage() {
                               >
                                 {equipment.name}
                               </Link>
-                              <span className="text-xs font-bold text-slate-500">
+
+                              <span className="text-xs font-bold text-slate-500 block">
                                 ${equipment.dayRate} / day
                               </span>
                             </div>
@@ -748,15 +1000,15 @@ function CheckoutPage() {
                   </div>
                 </div>
 
-                {/* 4. Payment Method Selection (INCLUDES CASH!) */}
-                <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-6 lg:p-8 shadow-xs space-y-5">
+                {/* 4. Payment Method & Verification Documents */}
+                <div className="bg-white rounded-3xl border border-slate-200/90 p-4 sm:p-6 lg:p-8 shadow-xs space-y-6">
                   <div className="flex items-center gap-2.5 border-b border-slate-100 pb-4">
                     <div className="size-8 rounded-xl bg-blue-50 text-[#0040DD] flex items-center justify-center font-black text-xs">
                       4
                     </div>
                     <div>
                       <h2 className="text-lg font-black text-slate-900">
-                        Select Payment Method
+                        Payment &amp; Identity Verification
                       </h2>
                       <p className="text-xs text-slate-500 font-medium">
                         Zero credit bureau checks • Cash, Zelle, and Cash App accepted
@@ -837,7 +1089,7 @@ function CheckoutPage() {
                   </div>
 
                   {/* Payment Details Container */}
-                  {paymentMethod === "cash" && (
+                  {paymentMethod === "cash" ? (
                     <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-5 space-y-3 animate-in fade-in">
                       <div className="flex items-center gap-2 text-emerald-900 font-black text-sm">
                         <Banknote className="size-4.5 text-emerald-700" />
@@ -854,118 +1106,272 @@ function CheckoutPage() {
                           • <strong>Zero advance credit card holds</strong> and <strong>zero bureau reporting</strong>. Valid state driver's license required at handover.
                         </p>
                       </div>
+                      <div className="pt-2 border-t border-emerald-200/80 flex items-center justify-between text-xs font-bold text-emerald-900">
+                        <span>Total Cash Due at Yard Counter:</span>
+                        <span className="font-display text-base font-black text-emerald-900">
+                          ${totalCost}.00
+                        </span>
+                      </div>
                     </div>
-                  )}
-
-                  {paymentMethod === "zelle" && (
-                    <div className="rounded-2xl border border-purple-200 bg-purple-50/30 p-5 space-y-4 animate-in fade-in">
+                  ) : (
+                    <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4 shadow-2xs animate-in fade-in">
                       <div className="flex flex-col sm:flex-row items-center gap-5">
-                        <img
-                          src={paymentSettings.zelle.qrCodeUrl || DEFAULT_PAYMENT_SETTINGS.zelle.qrCodeUrl}
-                          alt="Zelle QR Code"
-                          onError={(e) => {
-                            e.currentTarget.src = DEFAULT_PAYMENT_SETTINGS.zelle.qrCodeUrl;
-                          }}
-                          className="size-32 rounded-xl border border-purple-200 bg-white p-2 shadow-2xs shrink-0 object-contain"
-                        />
-                        <div className="space-y-2 text-xs flex-1 text-center sm:text-left">
-                          <span className="text-[11px] font-black uppercase text-purple-800 tracking-wider block">
-                            Zelle Recipient Account:
+                        {/* Enlargable QR Code */}
+                        <div className="flex flex-col items-center">
+                          <button
+                            type="button"
+                            onClick={() => setIsQrZoomed(true)}
+                            className="group relative p-2.5 rounded-2xl border border-slate-200 bg-white shadow-xs hover:border-[#0040DD]/60 hover:shadow-md transition-all cursor-pointer block shrink-0"
+                            title="Click to enlarge QR code for easy scanning"
+                          >
+                            <img
+                              src={activeQrUrl}
+                              alt={`${paymentMethod} QR Code`}
+                              onError={(e) => {
+                                e.currentTarget.src = defaultFallbackUrl;
+                              }}
+                              className="size-36 sm:size-40 rounded-xl object-contain"
+                            />
+                            <div className="absolute inset-0 bg-slate-900/10 backdrop-blur-[0.5px] rounded-2xl opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                              <span className="bg-white/95 text-slate-900 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md shadow-sm flex items-center gap-1">
+                                <ZoomIn className="size-3 text-[#0040DD]" /> Tap to Enlarge
+                              </span>
+                            </div>
+                          </button>
+                          <span className="text-[10px] font-semibold text-slate-500 mt-1.5 flex items-center gap-1">
+                            <QrCode className="size-3 text-[#0040DD]" />
+                            <span>Live M3 {paymentMethod === "zelle" ? "Zelle" : "Cash App"} Scan Code</span>
                           </span>
+                        </div>
+
+                        {/* Recipient Account Details with Copy */}
+                        <div className="space-y-2.5 text-xs flex-1 text-center sm:text-left min-w-0">
+                          <span className="text-[11px] font-black uppercase text-slate-500 tracking-wider block">
+                            {paymentMethod === "zelle" ? "Zelle Recipient Account:" : "Cash App Cashtag:"}
+                          </span>
+
                           <div className="flex items-center justify-center sm:justify-start gap-2">
-                            <span className="font-mono font-black text-slate-900 text-sm bg-white px-3 py-1.5 rounded-lg border border-purple-200">
-                              {paymentSettings.zelle.accountEmailOrPhone}
+                            <span className="font-mono font-black text-slate-900 text-sm bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 truncate">
+                              {paymentMethod === "zelle"
+                                ? paymentSettings.zelle.accountEmailOrPhone
+                                : paymentSettings.cashapp.cashtag}
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleCopy(paymentSettings.zelle.accountEmailOrPhone, "zelle", "Zelle email")}
-                              className="px-2.5 py-1.5 rounded-lg bg-white border border-purple-200 text-purple-700 hover:bg-purple-100 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                              onClick={() =>
+                                handleCopy(
+                                  paymentMethod === "zelle"
+                                    ? paymentSettings.zelle.accountEmailOrPhone
+                                    : paymentSettings.cashapp.cashtag,
+                                  "recipient",
+                                  paymentMethod === "zelle" ? "Zelle Email" : "Cashtag"
+                                )
+                              }
+                              className="px-2.5 py-1.5 rounded-xl bg-white border border-slate-200 text-[#0040DD] hover:bg-blue-50 font-bold text-xs flex items-center gap-1 cursor-pointer shrink-0 shadow-2xs"
                             >
-                              {copiedKey === "zelle" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
-                              <span>{copiedKey === "zelle" ? "Copied" : "Copy"}</span>
+                              {copiedKey === "recipient" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
+                              <span>{copiedKey === "recipient" ? "Copied" : "Copy"}</span>
                             </button>
                           </div>
-                          <p className="text-slate-600 font-medium text-[11px]">
-                            Registered Name: <strong>{paymentSettings.zelle.accountName}</strong>. Please include your full name in the memo.
-                          </p>
+
+                          <div className="space-y-0.5 text-slate-600 text-[11px] font-medium">
+                            <p>
+                              Account Name: <strong className="text-slate-900">{currentPayConfig.accountName}</strong>
+                            </p>
+                            <p>
+                              Amount to Send: <strong className="text-[#0040DD] font-black">${totalCost}.00</strong>
+                            </p>
+                          </div>
+
+                          {/* How to Complete Payment */}
+                          <div className="text-[11px] text-slate-600 text-left bg-blue-50/60 p-2.5 rounded-xl border border-blue-100/80 space-y-1">
+                            <p className="font-bold text-[#0040DD]">How to Complete Payment:</p>
+                            <ol className="list-decimal list-inside space-y-0.5 text-[10.5px]">
+                              <li>Scan QR code in your {paymentMethod === "zelle" ? "banking app" : "Cash App"}.</li>
+                              <li>Send exact order amount: <strong>${totalCost}.00</strong></li>
+                              <li>Take a screenshot of the payment receipt.</li>
+                              <li>Upload the screenshot below to verify booking.</li>
+                            </ol>
+                          </div>
                         </div>
                       </div>
+                    </div>
+                  )}
 
-                      {/* Screenshot Upload */}
-                      <div className="pt-2 border-t border-purple-100">
-                        <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                          Upload Transfer Screenshot *
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-purple-300 bg-white hover:bg-purple-50 cursor-pointer text-xs font-bold text-purple-800 transition-colors">
-                            <UploadCloud className="size-4" />
-                            <span>{screenshotFileName ? screenshotFileName : "Select screenshot image (JPG/PNG)"}</span>
+                  {/* ── REQUIRED VERIFICATION DOCUMENTS: PAYMENT SCREENSHOT & GOVERNMENT ID ── */}
+                  <div className="space-y-3 pt-2 border-t border-slate-100">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                        <FileText className="size-4 text-[#0040DD]" />
+                        <span>Upload Required Verification Documents</span>
+                        <span className="text-red-500">*</span>
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        To protect our commercial fleet and speed up your yard exit, please attach your Government ID and payment receipt.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Slot 1: Payment Screenshot */}
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <Banknote className="size-3.5 text-[#0040DD]" />
+                          <span>Payment Screenshot</span>
+                          {paymentMethod !== "cash" && <span className="text-red-500">*</span>}
+                        </span>
+
+                        {paymentMethod === "cash" ? (
+                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-3.5 text-xs text-emerald-950 flex flex-col justify-center min-h-[105px]">
+                            <div className="flex items-center gap-1.5 font-bold text-emerald-900 mb-1">
+                              <CheckCircle2 className="size-4 text-emerald-700" />
+                              <span>Cash Order Selected</span>
+                            </div>
+                            <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                              Pay <strong>${totalCost}.00</strong> in cash at the Houston yard counter. No digital transfer screenshot is required.
+                            </p>
+                          </div>
+                        ) : !paymentScreenshot ? (
+                          <label className="border-2 border-dashed border-slate-300 hover:border-[#0040DD] rounded-2xl p-4 text-center block cursor-pointer transition-colors bg-slate-50/50 hover:bg-blue-50/30 min-h-[105px] flex flex-col items-center justify-center">
+                            <UploadCloud className="size-6 text-[#0040DD] mx-auto mb-1" />
+                            <span className="text-xs font-bold text-slate-700 block leading-tight">
+                              Upload Payment Screenshot
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                              Zelle or Cash App Receipt (JPG, PNG, WebP)
+                            </span>
                             <input
                               type="file"
-                              accept="image/*"
+                              accept="image/jpeg,image/png,image/jpg,image/webp"
                               onChange={handleScreenshotUpload}
                               className="hidden"
                             />
                           </label>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentMethod === "cashapp" && (
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/30 p-5 space-y-4 animate-in fade-in">
-                      <div className="flex flex-col sm:flex-row items-center gap-5">
-                        <img
-                          src={paymentSettings.cashapp.qrCodeUrl || DEFAULT_PAYMENT_SETTINGS.cashapp.qrCodeUrl}
-                          alt="Cash App QR Code"
-                          onError={(e) => {
-                            e.currentTarget.src = DEFAULT_PAYMENT_SETTINGS.cashapp.qrCodeUrl;
-                          }}
-                          className="size-32 rounded-xl border border-emerald-200 bg-white p-2 shadow-2xs shrink-0 object-contain"
-                        />
-                        <div className="space-y-2 text-xs flex-1 text-center sm:text-left">
-                          <span className="text-[11px] font-black uppercase text-emerald-800 tracking-wider block">
-                            Cash App Cashtag:
-                          </span>
-                          <div className="flex items-center justify-center sm:justify-start gap-2">
-                            <span className="font-mono font-black text-slate-900 text-sm bg-white px-3 py-1.5 rounded-lg border border-emerald-200">
-                              {paymentSettings.cashapp.cashtag}
-                            </span>
+                        ) : (
+                          <div className="rounded-2xl border border-slate-200 p-3 bg-slate-50 flex items-center justify-between gap-3 shadow-2xs min-h-[105px]">
+                            <div className="flex items-center gap-3 truncate">
+                              <img
+                                src={paymentScreenshot}
+                                alt="Payment Proof"
+                                className="size-14 rounded-xl object-cover border border-slate-200 shrink-0 bg-white"
+                              />
+                              <div className="truncate text-left min-w-0">
+                                <span className="text-xs font-bold text-slate-800 block truncate">
+                                  {screenshotFileName || "payment-proof.png"}
+                                </span>
+                                <span className="text-[10px] text-[#16A34A] font-semibold flex items-center gap-1 mt-0.5">
+                                  <CheckCircle2 className="size-3" /> Screenshot Attached
+                                </span>
+                                <span className="text-[9.5px] text-slate-400 block truncate">
+                                  Ready for dispatcher review
+                                </span>
+                              </div>
+                            </div>
                             <button
                               type="button"
-                              onClick={() => handleCopy(paymentSettings.cashapp.cashtag, "cashapp", "Cashtag")}
-                              className="px-2.5 py-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-800 hover:bg-emerald-100 font-bold text-xs flex items-center gap-1 cursor-pointer"
+                              onClick={removeScreenshot}
+                              className="text-slate-400 hover:text-red-500 p-2 rounded-xl hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                              title="Remove payment screenshot"
                             >
-                              {copiedKey === "cashapp" ? <Check className="size-3 text-emerald-600" /> : <Copy className="size-3" />}
-                              <span>{copiedKey === "cashapp" ? "Copied" : "Copy"}</span>
+                              <Trash2 className="size-4" />
                             </button>
                           </div>
-                          <p className="text-slate-600 font-medium text-[11px]">
-                            Account Name: <strong>{paymentSettings.cashapp.accountName}</strong>. Match the exact order amount.
-                          </p>
-                        </div>
+                        )}
                       </div>
 
-                      {/* Screenshot Upload */}
-                      <div className="pt-2 border-t border-emerald-100">
-                        <label className="block text-xs font-bold text-slate-800 mb-1.5">
-                          Upload Cash App Transfer Receipt *
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-emerald-300 bg-white hover:bg-emerald-50 cursor-pointer text-xs font-bold text-emerald-800 transition-colors">
-                            <UploadCloud className="size-4" />
-                            <span>{screenshotFileName ? screenshotFileName : "Select Cash App screenshot (JPG/PNG)"}</span>
+                      {/* Slot 2: Government ID */}
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                          <User className="size-3.5 text-[#16A34A]" />
+                          <span>Government ID</span>
+                          <span className="text-red-500">*</span>
+                        </span>
+
+                        {!governmentId ? (
+                          <label className="border-2 border-dashed border-slate-300 hover:border-[#16A34A] rounded-2xl p-4 text-center block cursor-pointer transition-colors bg-slate-50/50 hover:bg-emerald-50/30 min-h-[105px] flex flex-col items-center justify-center">
+                            <UploadCloud className="size-6 text-[#16A34A] mx-auto mb-1" />
+                            <span className="text-xs font-bold text-slate-700 block leading-tight">
+                              Upload Government ID *
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5">
+                              Driver License, State ID, or Passport (JPG/PNG)
+                            </span>
                             <input
                               type="file"
-                              accept="image/*"
-                              onChange={handleScreenshotUpload}
+                              accept="image/jpeg,image/png,image/jpg,image/webp"
+                              onChange={handleGovIdUpload}
                               className="hidden"
                             />
                           </label>
-                        </div>
+                        ) : (
+                          <div className="rounded-2xl border border-slate-200 p-3 bg-slate-50 flex items-center justify-between gap-3 shadow-2xs min-h-[105px]">
+                            <div className="flex items-center gap-3 truncate">
+                              <img
+                                src={governmentId}
+                                alt="Government ID"
+                                className="size-14 rounded-xl object-cover border border-slate-200 shrink-0 bg-white"
+                              />
+                              <div className="truncate text-left min-w-0">
+                                <span className="text-xs font-bold text-slate-800 block truncate">
+                                  {govIdFileName || "government-id.png"}
+                                </span>
+                                <span className="text-[10px] text-[#16A34A] font-semibold flex items-center gap-1 mt-0.5">
+                                  <CheckCircle2 className="size-3" /> ID Attached
+                                </span>
+                                <span className="text-[9.5px] text-slate-400 block truncate">
+                                  Encrypted &amp; confidential
+                                </span>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={removeGovId}
+                              className="text-slate-400 hover:text-red-500 p-2 rounded-xl hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+                              title="Remove Government ID"
+                            >
+                              <Trash2 className="size-4" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* ── TERMS & CONDITIONS CHECKBOX ── */}
+                  <div className="pt-2 border-t border-slate-100">
+                    <label
+                      htmlFor={`${formId}-terms`}
+                      className={cn(
+                        "flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer select-none",
+                        acceptedTerms
+                          ? "border-blue-200 bg-blue-50/50 shadow-2xs"
+                          : "border-slate-200 bg-slate-50/80 hover:bg-slate-50 hover:border-slate-300"
+                      )}
+                    >
+                      <input
+                        type="checkbox"
+                        id={`${formId}-terms`}
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="mt-0.5 size-4 rounded-md border-slate-300 text-[#0040DD] focus:ring-[#0040DD]/30 cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs text-slate-700 font-medium leading-relaxed">
+                        I agree to the{" "}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setShowTermsModal(true);
+                          }}
+                          className="font-bold text-[#0040DD] underline hover:text-blue-800 cursor-pointer inline"
+                        >
+                          Terms &amp; Conditions
+                        </button>{" "}
+                        and Houston Commercial Rental Agreement. Zero credit bureau reporting and 24h flexible rescheduling.{" "}
+                        <span className="text-red-500 font-bold">*</span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
 
               </div>
@@ -991,6 +1397,24 @@ function CheckoutPage() {
                     <div className="flex items-center justify-between text-slate-600 font-medium">
                       <span>Credit Card Bureau Hold:</span>
                       <span className="font-bold text-emerald-600">$0 (No Hold)</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-slate-600 font-medium">
+                      <span>Government ID Verification:</span>
+                      <span
+                        className={cn(
+                          "font-bold flex items-center gap-1",
+                          governmentId ? "text-emerald-600" : "text-amber-600"
+                        )}
+                      >
+                        {governmentId ? (
+                          <>
+                            <CheckCircle2 className="size-3" /> Attached
+                          </>
+                        ) : (
+                          "Required"
+                        )}
+                      </span>
                     </div>
 
                     <div className="flex items-center justify-between text-slate-600 font-medium">
@@ -1041,7 +1465,7 @@ function CheckoutPage() {
                   <div className="space-y-2 pt-2 border-t border-slate-100 text-[11px] text-slate-500 font-medium">
                     <div className="flex items-center gap-2">
                       <Check className="size-3.5 text-emerald-600 shrink-0" />
-                      <span>Zero credit check • No automated holds</span>
+                      <span>Zero credit check • No automated card holds</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Check className="size-3.5 text-emerald-600 shrink-0" />
@@ -1081,6 +1505,157 @@ function CheckoutPage() {
           </form>
         </div>
       </section>
+
+      {/* ── QR CODE ZOOM MODAL ── */}
+      {isQrZoomed && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-slate-200 relative">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <span className="font-display font-black text-slate-900 text-sm flex items-center gap-1.5">
+                <QrCode className="size-4 text-[#0040DD]" />
+                <span>Scan with Banking App</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsQrZoomed(false)}
+                className="size-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border-2 border-slate-200/80 shadow-inner flex justify-center">
+              <img
+                src={activeQrUrl}
+                alt={`${paymentMethod} Large QR Code`}
+                onError={(e) => {
+                  e.currentTarget.src = defaultFallbackUrl;
+                }}
+                className="size-60 sm:size-64 object-contain rounded-xl"
+              />
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-left space-y-1">
+              <div className="flex justify-between text-slate-500">
+                <span>Recipient:</span>
+                <span className="font-bold text-slate-900">{currentPayConfig.accountName}</span>
+              </div>
+              <div className="flex justify-between text-slate-500">
+                <span>{paymentMethod === "zelle" ? "Email/Phone:" : "Cashtag:"}</span>
+                <span className="font-bold text-[#0040DD]">
+                  {paymentMethod === "zelle"
+                    ? paymentSettings.zelle.accountEmailOrPhone
+                    : paymentSettings.cashapp.cashtag}
+                </span>
+              </div>
+              <div className="flex justify-between font-bold pt-1 border-t border-slate-200/70 text-slate-900">
+                <span>Exact Amount:</span>
+                <span className="text-[#0040DD] text-sm">${totalCost}.00</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsQrZoomed(false)}
+              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+            >
+              Done Scanning
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── TERMS & CONDITIONS MODAL ── */}
+      {showTermsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2.5">
+                <div className="size-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-[#0040DD]">
+                  <ShieldCheck className="size-4" />
+                </div>
+                <div>
+                  <h3 className="font-display font-black text-slate-900 text-base">
+                    M3 Rental Terms &amp; Conditions
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Houston Commercial Yard Rental Policies
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="size-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-600 leading-relaxed">
+              <div className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 space-y-1">
+                <p className="font-extrabold text-[#0040DD] text-xs">
+                  1. Operation &amp; Driver Qualifications
+                </p>
+                <p>
+                  <strong>Self-Operated:</strong> Designated renters/drivers must be at least 21 years old and possess a valid, government-issued driver's license. All equipment must be operated within manufacturer-rated payload and safety limits.
+                </p>
+                <p>
+                  <strong>With Operator:</strong> Units rented with an operator will be operated exclusively by certified M3 commercial operators for the contracted shift duration.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100 space-y-1">
+                <p className="font-extrabold text-[#16A34A] text-xs">
+                  2. Payment &amp; Zero Credit Trap Guarantee
+                </p>
+                <p>
+                  We accept Cash, Zelle, and Cash App directly. We do NOT run credit bureau score inquiries or place predatory holds on your credit report. Full rental amount and standard refundable security deposit must be cleared before yard departure.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <p className="font-extrabold text-slate-900 text-xs">
+                  3. Yard Pick-up &amp; Return Inspection
+                </p>
+                <p>
+                  Equipment is inspected jointly at our Houston yard (11732 S Wilcrest Dr, Houston, TX 77099). Renter agrees to return equipment in the same condition as dispatched, normal wear and tear excepted.
+                </p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
+                <p className="font-extrabold text-slate-900 text-xs">
+                  4. Flexible Rescheduling
+                </p>
+                <p>
+                  Need to change dates due to weather or jobsite delays? Call our dispatch desk at (281) 933-5000 with 24 hours notice to reschedule at no additional penalty.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(false)}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-100 font-bold text-xs cursor-pointer transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAcceptedTerms(true);
+                  setShowTermsModal(false);
+                  toast.success("Terms & Conditions accepted!");
+                }}
+                className="px-5 py-2.5 rounded-xl bg-[#0040DD] hover:bg-[#0036ba] text-white font-black uppercase tracking-wider text-xs shadow-md flex items-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Check className="size-3.5" /> Accept &amp; Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SiteLayout>
   );
 }

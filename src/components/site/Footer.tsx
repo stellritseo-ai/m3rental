@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { site, directionsUrl } from "@/lib/site";
 import logoImg from "@/assets/logo.png";
+import { useLanguage } from "@/lib/i18n";
 
 /* ── Inline SVG Social Icons ── */
 const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -118,80 +119,89 @@ function MobileCollapsibleSection({
 }
 
 export function Footer() {
+  const { isSpanish } = useLanguage();
+
   const quickLinks = [
-    { label: "Home", href: "/" },
-    { label: "About M3 Rental", href: "/about" },
-    { label: "How It Works", href: "/how-it-works" },
-    { label: "Why Choose M3", href: "/why-m3" },
-    { label: "Contractor Reviews", href: "/#testimonials" },
-    { label: "Rental FAQ", href: "/#faq" },
-    { label: "Contact & Yard", href: "/contact" },
+    { label: isSpanish ? "Inicio" : "Home", href: "/" },
+    { label: isSpanish ? "Sobre M3 Rental" : "About M3 Rental", href: "/about" },
+    { label: isSpanish ? "Cómo Funciona" : "How It Works", href: "/how-it-works" },
+    { label: isSpanish ? "¿Por Qué Elegir M3?" : "Why Choose M3", href: "/why-m3" },
+    { label: isSpanish ? "Opiniones de Contratistas" : "Contractor Reviews", href: "/#testimonials" },
+    { label: isSpanish ? "Preguntas Frecuentes" : "Rental FAQ", href: "/#faq" },
+    { label: isSpanish ? "Contacto y Patio" : "Contact & Yard", href: "/contact" },
   ];
 
   const fleetLinks = [
     {
-      label: "Work Trucks & Pickups",
+      label: isSpanish ? "Camionetas y Camiones" : "Work Trucks & Pickups",
       href: "/equipment?category=pickup-trucks",
     },
     {
-      label: "Hauling & Dump Trailers",
+      label: isSpanish ? "Remolques de Carga y Volteo" : "Hauling & Dump Trailers",
       href: "/equipment?category=trailers",
     },
     {
-      label: "Heavy Construction Machinery",
+      label: isSpanish ? "Maquinaria de Construcción" : "Heavy Construction Machinery",
       href: "/equipment?category=construction-equipment",
     },
     {
-      label: "Passenger & Cargo Vans",
+      label: isSpanish ? "Vans de Pasajeros y Carga" : "Passenger & Cargo Vans",
       href: "/equipment?category=vans",
     },
     {
-      label: "Specialty & Compaction",
+      label: isSpanish ? "Equipos Especiales" : "Specialty & Compaction",
       href: "/equipment?category=specialty-equipment",
     },
     {
-      label: "Machines With Operator",
+      label: isSpanish ? "Máquinas con Operador" : "Machines With Operator",
       href: "/equipment?operator=with",
     },
     {
-      label: "View All 70+ Inventory →",
+      label: isSpanish ? "Ver Todo el Inventario (70+) →" : "View All 70+ Inventory →",
       href: "/equipment",
     },
   ];
 
   const servicesLinks = [
     {
-      label: "Operator Included Rentals",
+      label: isSpanish ? "Alquileres con Operador Incluido" : "Operator Included Rentals",
       href: "/equipment?operator=with",
     },
     {
-      label: "Zero Credit Card Trap (Cash/Zelle)",
+      label: isSpanish ? "Sin Tarjeta Obligatoria (Efectivo/Zelle)" : "Zero Credit Card Trap (Cash/Zelle)",
       href: "/how-it-works",
     },
     {
-      label: "15-Minute Rapid Yard Turnaround",
+      label: isSpanish ? "Retiro Rápido en 15 Minutos" : "15-Minute Rapid Yard Turnaround",
       href: "/#location-contact",
     },
     {
-      label: "Commercial Jobsite Delivery",
+      label: isSpanish ? "Entrega Comercial en Obra" : "Commercial Jobsite Delivery",
       href: "/#location-contact",
     },
     {
-      label: "Fast Online Quote Request",
+      label: isSpanish ? "Cotización Rápida en Línea" : "Fast Online Quote Request",
       href: "/contact",
     },
     {
-      label: "Deposit & Payment Policies",
+      label: isSpanish ? "Políticas de Depósito y Pago" : "Deposit & Payment Policies",
       href: "/#faq",
     },
   ];
 
-  const trustBadges = [
-    "70+ Machines",
-    "No Credit Card Req.",
-    "Turnkey Operators",
-    "15-Min Yard Pickup",
-  ];
+  const trustBadges = isSpanish
+    ? [
+        "70+ Máquinas",
+        "Sin Tarjeta Obligatoria",
+        "Operadores Incluidos",
+        "Retiro en 15 Min",
+      ]
+    : [
+        "70+ Machines",
+        "No Credit Card Req.",
+        "Turnkey Operators",
+        "15-Min Yard Pickup",
+      ];
 
   return (
     <footer
@@ -230,14 +240,21 @@ export function Footer() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4ADE80] opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4ADE80]" />
                 </span>
-                <span>SW Houston Yard Open • 15-Minute Turnaround</span>
+                <span>
+                  {isSpanish
+                    ? "Patio Abierto en SW Houston • Retiro en 15 Minutos"
+                    : "SW Houston Yard Open • 15-Minute Turnaround"}
+                </span>
               </div>
               <h3 className="font-display text-[20px] sm:text-[23px] font-black tracking-tight text-white leading-tight">
-                Need Equipment On Your Jobsite Today?
+                {isSpanish
+                  ? "¿Necesita Equipo en su Obra Hoy?"
+                  : "Need Equipment On Your Jobsite Today?"}
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-                Direct contractor dispatch line with zero credit card holds,
-                instant reservation confirmation, and turnkey operator options.
+                {isSpanish
+                  ? "Línea directa de despacho para contratistas sin retenciones de tarjeta, confirmación instantánea y opciones de operadores calificados."
+                  : "Direct contractor dispatch line with zero credit card holds, instant reservation confirmation, and turnkey operator options."}
               </p>
             </div>
 
@@ -252,7 +269,7 @@ export function Footer() {
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-[10px] uppercase font-bold tracking-wider text-white/80">
-                    Direct Yard Dispatch
+                    {isSpanish ? "Despacho Directo" : "Direct Yard Dispatch"}
                   </span>
                   <span className="font-black text-white text-[15px] tracking-tight leading-none">
                     {site.phone}
@@ -264,7 +281,7 @@ export function Footer() {
                 to="/contact"
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 hover:bg-white/15 px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:text-[#FFD54F] transition-all cursor-pointer text-center"
               >
-                <span>Request Online Quote</span>
+                <span>{isSpanish ? "Solicitar Cotización en Línea" : "Request Online Quote"}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -345,7 +362,7 @@ export function Footer() {
           </div>
 
           {/* Mobile Collapsible Sections */}
-          <MobileCollapsibleSection title="Quick Navigation">
+          <MobileCollapsibleSection title={isSpanish ? "Navegación Rápida" : "Quick Navigation"}>
             <ul className="space-y-2.5">
               {quickLinks.map(({ label, href }) => (
                 <li key={label}>
@@ -360,7 +377,7 @@ export function Footer() {
             </ul>
           </MobileCollapsibleSection>
 
-          <MobileCollapsibleSection title="Fleet Directory">
+          <MobileCollapsibleSection title={isSpanish ? "Directorio de Flota" : "Fleet Directory"}>
             <ul className="space-y-2.5">
               {fleetLinks.map(({ label, href }) => (
                 <li key={label}>
@@ -375,7 +392,9 @@ export function Footer() {
             </ul>
           </MobileCollapsibleSection>
 
-          <MobileCollapsibleSection title="Contractor Services & Policies">
+          <MobileCollapsibleSection
+            title={isSpanish ? "Servicios y Políticas" : "Contractor Services & Policies"}
+          >
             <ul className="space-y-2.5">
               {servicesLinks.map(({ label, href }) => (
                 <li key={label}>
@@ -505,7 +524,7 @@ export function Footer() {
           {/* Col 2: Quick Links (col-span-2) */}
           <div className="lg:col-span-2">
             <h3 className="text-xs uppercase tracking-widest text-[#FFD54F] font-black mb-5">
-              Quick Links
+              {isSpanish ? "Enlaces Rápidos" : "Quick Links"}
             </h3>
             <ul className="space-y-2.5 text-sm font-medium">
               {quickLinks.map(({ label, href }) => (
@@ -527,7 +546,7 @@ export function Footer() {
           {/* Col 3: Fleet Directory (col-span-2) */}
           <div className="lg:col-span-2">
             <h3 className="text-xs uppercase tracking-widest text-[#FFD54F] font-black mb-5">
-              Fleet Directory
+              {isSpanish ? "Directorio de Flota" : "Fleet Directory"}
             </h3>
             <ul className="space-y-2.5 text-sm font-medium">
               {fleetLinks.map(({ label, href }) => (
@@ -549,7 +568,7 @@ export function Footer() {
           {/* Col 4: Services & Policies (col-span-2) */}
           <div className="lg:col-span-2">
             <h3 className="text-xs uppercase tracking-widest text-[#FFD54F] font-black mb-5">
-              Services & Policies
+              {isSpanish ? "Servicios y Políticas" : "Services & Policies"}
             </h3>
             <ul className="space-y-2.5 text-sm font-medium">
               {servicesLinks.map(({ label, href }) => (
@@ -572,7 +591,7 @@ export function Footer() {
           <div className="lg:col-span-2 space-y-5">
             <div>
               <h3 className="text-xs uppercase tracking-widest text-[#FFD54F] font-black mb-5">
-                Houston Yard Hub
+                {isSpanish ? "Patio en Houston" : "Houston Yard Hub"}
               </h3>
               <ul className="space-y-3.5 text-sm">
                 <li>
